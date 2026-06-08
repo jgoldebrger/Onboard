@@ -97,6 +97,24 @@ function promptKey(p: NextPrompt | null): string | null {
   return p.kind;
 }
 
+const WELCOME_INTRO =
+  "Welcome to CarrierFlow. We'll start with your DOT number and verify it against the FMCSA registry (SAFER), then carrier type, remaining questions, documents, and identity verification.";
+
+function formatAssistantPrompt(
+  prompt: string,
+  nextPrompt: NextPrompt,
+  isFirstAssistant: boolean,
+): string {
+  if (
+    isFirstAssistant &&
+    nextPrompt.kind === "question" &&
+    nextPrompt.key === "dot_number"
+  ) {
+    return `${WELCOME_INTRO}\n\n${prompt}`;
+  }
+  return prompt;
+}
+
 export function InterviewChat({
   applicationId,
   initialStatus,
@@ -105,14 +123,7 @@ export function InterviewChat({
   initialStatus: string;
 }) {
   const [status, setStatus] = useState(initialStatus);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Welcome to CarrierFlow. We'll start with your DOT number and verify it against the FMCSA registry (SAFER), then carrier type, remaining questions, documents, and identity verification.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<OnboardingPhase>("carrier_type");
   const [nextPrompt, setNextPrompt] = useState<NextPrompt | null>(null);
@@ -139,17 +150,25 @@ export function InterviewChat({
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const appendAssistant = useCallback((content: string, idPrefix = "assistant") => {
-    setMessages((prev) => {
-      if (prev.some((m) => m.role === "assistant" && m.content === content)) {
-        return prev;
-      }
-      return [
-        ...prev,
-        { id: `${idPrefix}-${Date.now()}`, role: "assistant", content },
-      ];
-    });
-  }, []);
+  const appendAssistant = useCallback(
+    (content: string, idPrefix = "assistant", nextPromptForWelcome?: NextPrompt) => {
+      setMessages((prev) => {
+        const isFirstAssistant = !prev.some((m) => m.role === "assistant");
+        const text =
+          nextPromptForWelcome && isFirstAssistant
+            ? formatAssistantPrompt(content, nextPromptForWelcome, true)
+            : content;
+        if (prev.some((m) => m.role === "assistant" && m.content === text)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          { id: `${idPrefix}-${Date.now()}`, role: "assistant", content: text },
+        ];
+      });
+    },
+    [],
+  );
 
   const applyState = useCallback((json: QuestionsResponse) => {
     setPhase(json.phase);
@@ -202,7 +221,7 @@ export function InterviewChat({
     const key = promptKey(nextPrompt);
     if (!key || lastPromptedKeyRef.current === key) return;
     lastPromptedKeyRef.current = key;
-    appendAssistant(nextPrompt.prompt, `ask-${key}`);
+    appendAssistant(nextPrompt.prompt, `ask-${key}`, nextPrompt);
   }, [polling, nextPrompt, appendAssistant]);
 
   useEffect(() => {
