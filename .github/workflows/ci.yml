@@ -15,11 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-bookworm
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: carrierflow_test
+          POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
         ports:
           - 5432:5432
         options: >-
@@ -35,7 +36,8 @@ jobs:
       AUTH_URL: http://127.0.0.1:3000
       STORAGE_PROVIDER: local
       SEED_ADMIN_PASSWORD: changeme123
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      NEXT_TELEMETRY_DISABLED: 1
+      PRISMA_HIDE_UPDATE_MESSAGE: 1
 
     steps:
       - uses: actions/checkout@v5
@@ -62,7 +64,7 @@ jobs:
         run: npm test
 
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: carrierflow/.next/cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('carrierflow/package-lock.json') }}-${{ hashFiles('carrierflow/**/*.ts', 'carrierflow/**/*.tsx') }}
