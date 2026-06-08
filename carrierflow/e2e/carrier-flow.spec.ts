@@ -19,6 +19,6 @@ test.describe("Carrier golden path", () => {
     await completeBrokerOnboardingChat(page);
     await submitApplication(page);
 
-    await expect(page.getByText(/PENDING REVIEW/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Submitted" })).toBeVisible();
   });
 });

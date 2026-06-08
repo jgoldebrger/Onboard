@@ -52,7 +52,8 @@ export async function completeBrokerOnboardingChat(page: Page) {
 
 export async function submitApplication(page: Page) {
   await page.getByRole("button", { name: "Submit application" }).click();
-  await expect(page.getByText(/PENDING REVIEW|submitted successfully/i)).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(
+    page.getByText(/Application submitted successfully/i),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "Submitted" })).toBeVisible();
 }
