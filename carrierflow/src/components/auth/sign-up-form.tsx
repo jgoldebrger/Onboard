@@ -5,14 +5,6 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -61,15 +53,19 @@ export function SignUpForm() {
   }
 
   return (
-    <Card className="w-full max-w-md border-border shadow-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Create account</CardTitle>
-        <CardDescription>
-          Register your company to start Fabuwood carrier onboarding
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4">
+    <div className="w-full max-w-[420px]">
+      <div className="mb-8 space-y-2 text-center lg:text-left">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Create your account
+        </h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Register your company to start Fabuwood carrier onboarding. You can
+          add your DOT number in the guided chat.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.25)] sm:p-8">
+        <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="email">Work email</Label>
             <Input
@@ -78,6 +74,7 @@ export function SignUpForm() {
               required
               autoComplete="email"
               placeholder="ops@yourcarrier.com"
+              className="h-11 bg-background"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -91,6 +88,7 @@ export function SignUpForm() {
               minLength={8}
               autoComplete="new-password"
               placeholder="At least 8 characters"
+              className="h-11 bg-background"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -102,6 +100,7 @@ export function SignUpForm() {
               type="text"
               autoComplete="organization"
               placeholder="Your carrier LLC"
+              className="h-11 bg-background"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
             />
@@ -111,19 +110,25 @@ export function SignUpForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
+          <Button
+            type="submit"
+            className="h-11 w-full text-base shadow-sm"
+            disabled={loading}
+          >
             {loading ? "Creating account…" : "Create account"}
           </Button>
         </form>
-      </CardContent>
-      <CardFooter className="justify-center border-t border-border pt-6">
-        <p className="text-sm text-muted-foreground">
-          Already registered?{" "}
-          <Link href="/sign-in" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+      </div>
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Already registered?{" "}
+        <Link
+          href="/sign-in"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
+    </div>
   );
 }

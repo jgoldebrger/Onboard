@@ -30,6 +30,6 @@ test.describe("Authentication", () => {
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL(/\/sign-in/);
-    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   });
 });
