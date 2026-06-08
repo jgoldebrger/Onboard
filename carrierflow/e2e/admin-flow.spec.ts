@@ -6,6 +6,10 @@ import {
   signUp,
   uniqueCarrierEmail,
 } from "./helpers/auth";
+import {
+  completeBrokerOnboardingChat,
+  submitApplication,
+} from "./helpers/onboarding";
 
 test.describe("Admin review", () => {
   test("admin approves a submitted application", async ({ page, browser }) => {
@@ -19,13 +23,8 @@ test.describe("Admin review", () => {
     await carrierPage.getByRole("link", { name: "Start onboarding" }).click();
     await carrierPage.waitForURL(/\/onboarding\/[^/]+$/);
 
-    const chatInput = carrierPage.getByLabel("Message");
-    await chatInput.fill("broker");
-    await carrierPage.getByRole("button", { name: "Send" }).click();
-    await carrierPage.getByRole("button", { name: "Submit application" }).click();
-    await expect(carrierPage.getByText(/PENDING_REVIEW|submitted/i)).toBeVisible({
-      timeout: 20_000,
-    });
+    await completeBrokerOnboardingChat(carrierPage);
+    await submitApplication(carrierPage);
 
     await carrierContext.close();
 
@@ -35,8 +34,8 @@ test.describe("Admin review", () => {
 
     const row = page.locator("tr").filter({ hasText: email });
     await expect(row).toBeVisible({ timeout: 10_000 });
-    await row.getByRole("link", { name: "Review" }).click();
-    await page.waitForURL(/\/applications\/[^/]+$/);
+    await row.getByRole("link", { name: "Open" }).click();
+    await page.waitForURL(/\/carriers\/[^/]+$/);
 
     await expect(page.getByText("PENDING_REVIEW")).toBeVisible();
     await page.getByRole("button", { name: "Approve" }).click();
