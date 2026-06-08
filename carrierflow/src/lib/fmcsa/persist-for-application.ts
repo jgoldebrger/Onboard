@@ -49,7 +49,9 @@ export async function syncFmcsaFromDotAnswer(
   try {
     fmcsa = await lookupCarrier({ dotNumber: dot });
   } catch (err) {
-    console.warn("FMCSA sync failed for application", applicationId, err);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("FMCSA sync failed for application", applicationId, err);
+    }
     return null;
   }
 

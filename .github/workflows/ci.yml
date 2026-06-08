@@ -35,11 +35,12 @@ jobs:
       AUTH_URL: http://127.0.0.1:3000
       STORAGE_PROVIDER: local
       SEED_ADMIN_PASSWORD: changeme123
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -59,6 +60,14 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: carrierflow/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('carrierflow/package-lock.json') }}-${{ hashFiles('carrierflow/**/*.ts', 'carrierflow/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('carrierflow/package-lock.json') }}-
 
       - name: Build
         run: npm run build

@@ -14,6 +14,8 @@ export async function enrichInterviewInBackground(
       messages: [{ role: "user", content: userMessage }],
     });
   } catch (err) {
-    console.warn("interview background enrich failed", err);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("interview background enrich failed", err);
+    }
   }
 }

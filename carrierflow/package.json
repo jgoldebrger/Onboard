@@ -18,9 +18,6 @@
     "db:up": "docker compose up -d",
     "inngest:dev": "npx inngest-cli@latest dev"
   },
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-slot": "^1.2.4",
