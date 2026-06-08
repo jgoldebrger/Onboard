@@ -10,7 +10,7 @@ const INTERVIEW_QUESTION_PRIORITY = [
 export function sortInterviewQuestions<T extends { key: string }>(
   questions: T[],
 ): T[] {
-  const rank = new Map(
+  const rank = new Map<string, number>(
     INTERVIEW_QUESTION_PRIORITY.map((key, index) => [key, index]),
   );
   return [...questions].sort((a, b) => {

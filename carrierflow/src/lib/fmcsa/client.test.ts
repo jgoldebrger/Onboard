@@ -30,7 +30,7 @@ describe("deriveAuthorityStatus", () => {
           },
         },
       ],
-    } as FmcsaApiEnvelope;
+    } as unknown as FmcsaApiEnvelope;
     assert.equal(deriveAuthorityStatus(authority), "ACTIVE");
   });
 });

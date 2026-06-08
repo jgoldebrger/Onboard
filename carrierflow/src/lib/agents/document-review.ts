@@ -211,7 +211,7 @@ export async function runDocumentReviewAgent(params: {
         {
           rule: "document_type_match",
           passed: false,
-          message: contentValidation.reason,
+          message: contentValidation.reason ?? undefined,
         },
       ],
       failureReasons: [contentValidation.reason ?? "Wrong document type"],

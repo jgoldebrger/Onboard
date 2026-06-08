@@ -1,3 +1,4 @@
+import type { Question } from "@prisma/client";
 import OpenAI from "openai";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
@@ -37,12 +38,10 @@ export type InterviewAgentResult = {
   parsedAnswers?: { questionKey: string; value: unknown }[];
 };
 
-type QuestionRow = {
-  id: string;
-  key: string;
-  label: string;
-  type: string;
-};
+type QuestionRow = Pick<
+  Question,
+  "id" | "key" | "label" | "type" | "validation"
+>;
 
 async function loadInterviewContext(applicationId: string) {
   const application = await db.onboardingApplication.findUnique({
