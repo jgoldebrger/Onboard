@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  REVIEWER
+  CARRIER
+}
+
+enum ApplicationStatus {
+  DRAFT
+  IN_PROGRESS
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_INFO
+}
+
+enum RuleEffect {
+  REQUIRE
+  OPTIONAL
+  BLOCK_APPROVAL
+  ADD_RISK
+}
+
+enum QuestionType {
+  TEXT
+  NUMBER
+  DATE
+  DROPDOWN
+  MULTI_SELECT
+  YES_NO
+  FILE_UPLOAD
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum VerificationStatus {
+  PENDING
+  PASSED
+  FAILED
+  MANUAL_REVIEW
+}
+
+enum DocumentReviewStatus {
+  PENDING
+  PROCESSING
+  PASSED
+  FAILED
+  NEEDS_REVIEW
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String?
+  role         UserRole @default(CARRIER)
+  companyName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications OnboardingApplication[]
+  approvalLogs ApprovalLog[]
+  auditLogs    AuditLog[]
+}
+
+model PartnerType {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  carrierTypes CarrierType[]
+  createdAt    DateTime      @default(now())
+}
+
+model CarrierType {
+  id            String   @id @default(cuid())
+  partnerTypeId String
+  slug          String
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  partnerType  PartnerType           @relation(fields: [partnerTypeId], references: [id])
+  applications OnboardingApplication[]
+  questions    CarrierTypeQuestion[]
+
+  @@unique([partnerTypeId, slug])
+}
+
+model CarrierTypeQuestion {
+  id            String @id @default(cuid())
+  carrierTypeId String
+  questionId    String
+  sortOrder     Int    @default(0)
+
+  carrierType CarrierType @relation(fields: [carrierTypeId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([carrierTypeId, questionId])
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  key        String       @unique
+  label      String
+  type       QuestionType
+  options    Json?
+  validation Json?
+  isActive   Boolean      @default(true)
+  version    Int          @default(1)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  answers      ApplicationAnswer[]
+  carrierTypes CarrierTypeQuestion[]
+}
+
+model DocumentType {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  mimeTypes   String[]
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents CarrierDocument[]
+}
+
+model RuleVersion {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  version     Int
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  createdById String?
+  conditions  Json
+  actions     Json
+  createdAt   DateTime  @default(now())
+
+  rules Rule[]
+}
+
+model Rule {
+  id            String  @id @default(cuid())
+  ruleVersionId String
+  priority      Int     @default(100)
+  isEnabled     Boolean @default(true)
+
+  ruleVersion RuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
+}
+
+model OnboardingApplication {
+  id                  String            @id @default(cuid())
+  userId              String
+  carrierTypeId       String?
+  status              ApplicationStatus @default(DRAFT)
+  detectedType        String?
+  riskScore           Int               @default(0)
+  riskLevel           RiskLevel         @default(LOW)
+  recommendation      String?
+  ruleVersionSnapshot Json?
+  submittedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  user                 User                     @relation(fields: [userId], references: [id])
+  carrierType          CarrierType?             @relation(fields: [carrierTypeId], references: [id])
+  answers              ApplicationAnswer[]
+  documents            CarrierDocument[]
+  govVerifications     GovernmentVerification[]
+  identityVerification IdentityVerification?
+  riskAssessments      RiskAssessment[]
+  approvalLogs         ApprovalLog[]
+}
+
+model ApplicationAnswer {
+  id            String @id @default(cuid())
+  applicationId String
+  questionId    String
+  value         Json
+  source        String @default("user")
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question    Question              @relation(fields: [questionId], references: [id])
+
+  @@unique([applicationId, questionId])
+}
+
+model CarrierDocument {
+  id             String   @id @default(cuid())
+  applicationId  String
+  documentTypeId String?
+  storageKey     String
+  fileName       String
+  mimeType       String
+  fileSize       Int
+  uploadedAt     DateTime @default(now())
+
+  application  OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentType DocumentType?         @relation(fields: [documentTypeId], references: [id])
+  review       DocumentReview?
+}
+
+model DocumentReview {
+  id             String               @id @default(cuid())
+  documentId     String               @unique
+  status         DocumentReviewStatus @default(PENDING)
+  reviewProgress Int                  @default(0)
+  reviewStep     String?
+  documentType   String?
+  confidence     Float?
+  extractedData  Json?
+  ruleResults    Json?
+  failureReasons String[]
+  processedAt    DateTime?
+
+  document CarrierDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model GovernmentVerification {
+  id              String             @id @default(cuid())
+  applicationId   String
+  dotNumber       String?
+  mcNumber        String?
+  provider        String             @default("fmcsa_qcmobile")
+  rawResponse     Json
+  companyName     String?
+  dotStatus       String?
+  mcStatus        String?
+  authorityStatus String?
+  matchScore      Float?
+  riskFlags       String[]
+  status          VerificationStatus @default(PENDING)
+  verifiedAt      DateTime           @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model IdentityVerification {
+  id                  String             @id @default(cuid())
+  applicationId       String             @unique
+  dlStorageKey        String
+  selfieStorageKey    String
+  extractedIdData     Json?
+  faceDetected        Boolean            @default(false)
+  match               Boolean?
+  confidence          Float?
+  status              VerificationStatus @default(PENDING)
+  requiresHumanReview Boolean            @default(true)
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime           @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model RiskAssessment {
+  id            String    @id @default(cuid())
+  applicationId String
+  totalScore    Int
+  riskLevel     RiskLevel
+  breakdown     Json
+  assessedAt    DateTime  @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model RiskRule {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  points    Int
+  condition Json
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApprovalLog {
+  id            String   @id @default(cuid())
+  applicationId String
+  actorId       String
+  action        String
+  notes         String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User                  @relation(fields: [actorId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  entityType String
+  entityId   String
+  action     String
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+}
+
+model AgentConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  promptVersions AgentPromptVersion[]
+}
+
+model AgentPromptVersion {
+  id            String    @id @default(cuid())
+  agentConfigId String
+  version       Int
+  systemPrompt  String    @db.Text
+  model         String    @default("gpt-4o")
+  temperature   Float     @default(0.2)
+  maxTokens     Int       @default(4096)
+  visionEnabled Boolean   @default(false)
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+
+  agentConfig AgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+  runLogs     AgentRunLog[]
+
+  @@unique([agentConfigId, version])
+}
+
+model AgentRunLog {
+  id              String   @id @default(cuid())
+  agentConfigKey  String
+  promptVersionId String?
+  applicationId   String?
+  latencyMs       Int?
+  confidence      Float?
+  success         Boolean  @default(true)
+  errorMessage    String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  promptVersion AgentPromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+}

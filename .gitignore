@@ -1,0 +1,6 @@
+# Local tooling (portable git, etc.)
+.tools/
+
+# OS
+.DS_Store
+Thumbs.db
