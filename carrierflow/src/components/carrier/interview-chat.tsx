@@ -120,7 +120,7 @@ export function InterviewChat({
     key: string;
     label: string;
   } | null>(null);
-  const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
+  const [, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
   const [processingDocument, setProcessingDocument] =
     useState<ProcessingDocument | null>(null);
   const [progress, setProgress] = useState({
@@ -285,7 +285,7 @@ export function InterviewChat({
     }
   }
 
-  async function afterIdentityUpload(status: string) {
+  async function afterIdentityUpload() {
     setMessages((prev) => [
       ...prev,
       {
@@ -457,8 +457,8 @@ export function InterviewChat({
               {phase === "identity" ? (
                 <ChatIdentityUpload
                   applicationId={applicationId}
-                  onUploaded={(s) => {
-                    void afterIdentityUpload(s);
+                  onUploaded={() => {
+                    void afterIdentityUpload();
                   }}
                 />
               ) : null}

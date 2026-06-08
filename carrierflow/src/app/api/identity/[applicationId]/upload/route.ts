@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { getSessionUser, hasPermission } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { runIdentityCompare } from "@/lib/agents/identity";
 import { db } from "@/lib/db";
 import {

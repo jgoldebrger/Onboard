@@ -31,7 +31,7 @@ export function QuestionForm({ initial }: { initial?: Initial }) {
       initial?.validationJson
         ? parseQuestionValidation(JSON.parse(initial.validationJson))
         : {},
-    [initial?.validationJson],
+    [initial],
   );
   const formDefaults = validationConfigToFormState(parsedValidation);
 

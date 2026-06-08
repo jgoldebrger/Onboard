@@ -123,7 +123,7 @@ export async function processInterviewMessage(
     },
   });
 
-  let carrierTypeSlug =
+  const carrierTypeSlug =
     application?.carrierType?.slug ?? application?.detectedType ?? null;
 
   if (!carrierTypeSlug) {

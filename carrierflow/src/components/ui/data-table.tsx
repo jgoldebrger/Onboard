@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -129,25 +128,17 @@ export function DataTable<T>({
   }, [filteredRows, sortColumnId, sortDirection, columns]);
 
   const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [filter, sortColumnId, sortDirection, pageSize, data.length]);
-
-  useEffect(() => {
-    if (pageIndex > pageCount - 1) {
-      setPageIndex(Math.max(0, pageCount - 1));
-    }
-  }, [pageIndex, pageCount]);
+  const clampedPageIndex = Math.min(pageIndex, Math.max(0, pageCount - 1));
 
   const paginatedRows = useMemo(() => {
-    const start = pageIndex * pageSize;
+    const start = clampedPageIndex * pageSize;
     return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, pageIndex, pageSize]);
+  }, [sortedRows, clampedPageIndex, pageSize]);
 
   const toggleSort = useCallback((columnId: string) => {
     const column = columns.find((c) => c.id === columnId);
     if (!column || column.sortable === false) return;
+    setPageIndex(0);
     if (sortColumnId !== columnId) {
       setSortColumnId(columnId);
       setSortDirection("asc");
@@ -171,8 +162,12 @@ export function DataTable<T>({
     });
   };
 
-  const rangeStart = sortedRows.length === 0 ? 0 : pageIndex * pageSize + 1;
-  const rangeEnd = Math.min(sortedRows.length, (pageIndex + 1) * pageSize);
+  const rangeStart =
+    sortedRows.length === 0 ? 0 : clampedPageIndex * pageSize + 1;
+  const rangeEnd = Math.min(
+    sortedRows.length,
+    (clampedPageIndex + 1) * pageSize,
+  );
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -181,7 +176,10 @@ export function DataTable<T>({
           <Input
             type="search"
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder={filterPlaceholder}
             className="max-w-xs"
             aria-label="Filter table"
@@ -310,7 +308,10 @@ export function DataTable<T>({
             <select
               className="rounded-md border border-input bg-card px-2 py-1 text-foreground"
               value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPageIndex(0);
+              }}
             >
               {pageSizeOptions.map((n) => (
                 <option key={n} value={n}>
@@ -323,20 +324,22 @@ export function DataTable<T>({
             type="button"
             variant="outline"
             size="sm"
-            disabled={pageIndex <= 0}
-            onClick={() => setPageIndex((p) => p - 1)}
+            disabled={clampedPageIndex <= 0}
+            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
           >
             Previous
           </Button>
           <span className="min-w-[5rem] text-center text-muted-foreground">
-            Page {pageIndex + 1} of {pageCount}
+            Page {clampedPageIndex + 1} of {pageCount}
           </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={pageIndex >= pageCount - 1}
-            onClick={() => setPageIndex((p) => p + 1)}
+            disabled={clampedPageIndex >= pageCount - 1}
+            onClick={() =>
+              setPageIndex((p) => Math.min(pageCount - 1, p + 1))
+            }
           >
             Next
           </Button>

@@ -44,41 +44,33 @@ export function ChatDocumentUpload({
   }) => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [reviewing, setReviewing] = useState(awaitingReview);
+  const [uploadReviewing, setUploadReviewing] = useState(false);
+  const reviewing = uploadReviewing || awaitingReview;
   const [error, setError] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
-  const [reviewProgress, setReviewProgress] = useState(initialProgress);
-  const [reviewStep, setReviewStep] = useState<string | null>(initialStep);
-  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(
-    processingDocumentId,
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStep, setUploadStep] = useState<string | null>(null);
+  const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(
+    null,
   );
+  const activeDocumentId = uploadedDocumentId ?? processingDocumentId ?? null;
+  const reviewProgress = uploadReviewing
+    ? (uploadProgress ?? 5)
+    : initialProgress;
+  const reviewStep = uploadReviewing
+    ? (uploadStep ?? "Upload received")
+    : initialStep;
   const completedRef = useRef(false);
-
-  useEffect(() => {
-    setReviewing(awaitingReview);
-    if (processingDocumentId) {
-      setActiveDocumentId(processingDocumentId);
-    }
-    if (awaitingReview) {
-      setReviewProgress(initialProgress);
-      setReviewStep(initialStep);
-    }
-  }, [
-    awaitingReview,
-    processingDocumentId,
-    initialProgress,
-    initialStep,
-  ]);
 
   const handleReviewComplete = useCallback(
     (result: { documentId: string; status: string; documentName: string }) => {
       if (completedRef.current && result.status !== "FAILED") return;
       if (result.status !== "FAILED") {
         completedRef.current = true;
-        setReviewProgress(100);
-        setReviewStep("Review complete");
+        setUploadProgress(100);
+        setUploadStep("Review complete");
       }
-      setReviewing(false);
+      setUploadReviewing(false);
       onReviewComplete(result);
     },
     [onReviewComplete],
@@ -87,10 +79,10 @@ export function ChatDocumentUpload({
   const applyReviewPoll = useCallback((json: ReviewPoll) => {
     setReviewStatus(json.status);
     if (typeof json.reviewProgress === "number") {
-      setReviewProgress(json.reviewProgress);
+      setUploadProgress(json.reviewProgress);
     }
     if (json.reviewStep != null) {
-      setReviewStep(json.reviewStep);
+      setUploadStep(json.reviewStep);
     }
   }, []);
 
@@ -247,16 +239,16 @@ export function ChatDocumentUpload({
       if (!res.ok) throw new Error(json.error ?? "Upload failed");
 
       const docId = json.documentId as string;
-      setActiveDocumentId(docId);
-      setReviewing(true);
-      setReviewProgress(5);
-      setReviewStep("Upload received");
+      setUploadedDocumentId(docId);
+      setUploadReviewing(true);
+      setUploadProgress(5);
+      setUploadStep("Upload received");
       onUploadStarted?.();
 
       const initialStatus = json.reviewStatus ?? "PROCESSING";
       setReviewStatus(initialStatus);
     } catch (err) {
-      setReviewing(false);
+      setUploadReviewing(false);
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setLoading(false);

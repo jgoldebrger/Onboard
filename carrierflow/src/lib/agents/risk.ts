@@ -58,7 +58,7 @@ export async function assessApplicationRisk(
     }
   }
 
-  let totalScore = breakdown.reduce((sum, b) => sum + b.points, 0);
+  const totalScore = breakdown.reduce((sum, b) => sum + b.points, 0);
   let riskLevel = levelFromScore(totalScore);
   let summary: string | undefined;
 

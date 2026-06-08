@@ -1,4 +1,4 @@
-import type { Prisma, VerificationStatus } from "@prisma/client";
+import type { VerificationStatus } from "@prisma/client";
 import { loadApplicationVerificationFields } from "@/app/api/verification/_utils";
 import {
   runVerificationCompare,

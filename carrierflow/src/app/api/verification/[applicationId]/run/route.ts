@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Prisma, VerificationStatus } from "@prisma/client";
+import type { VerificationStatus } from "@prisma/client";
 import { auditLog } from "@/lib/audit";
 import {
   carrierLegalName,

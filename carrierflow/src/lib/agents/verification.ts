@@ -36,18 +36,6 @@ const verificationResultSchema = z.object({
   riskFlags: z.array(z.string()),
 });
 
-function answerString(value: unknown): string | null {
-  if (value == null) return null;
-  if (typeof value === "string") return value.trim() || null;
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (typeof value === "object" && value !== null && "value" in value) {
-    return answerString((value as { value: unknown }).value);
-  }
-  return null;
-}
-
 export function ruleBasedVerificationCompare(
   application: ApplicationVerificationFields,
   fmcsa: FmcsaLookupResult,

@@ -36,40 +36,54 @@ type RunLog = {
   createdAt: string;
 };
 
+function publishedConfig(agent: AgentRow | undefined) {
+  return agent?.published ?? agent?.versions[0];
+}
+
 export function AiStudioClient({ initialAgents }: { initialAgents: AgentRow[] }) {
   const [agents, setAgents] = useState(initialAgents);
   const [selectedId, setSelectedId] = useState(initialAgents[0]?.id ?? "");
-  const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("gpt-4o");
-  const [temperature, setTemperature] = useState(0.2);
-  const [maxTokens, setMaxTokens] = useState(4096);
-  const [visionEnabled, setVisionEnabled] = useState(false);
+  const initialConfig = publishedConfig(initialAgents[0]);
+  const [prompt, setPrompt] = useState(initialConfig?.systemPrompt ?? "");
+  const [model, setModel] = useState(initialConfig?.model ?? "gpt-4o");
+  const [temperature, setTemperature] = useState(initialConfig?.temperature ?? 0.2);
+  const [maxTokens, setMaxTokens] = useState(initialConfig?.maxTokens ?? 4096);
+  const [visionEnabled, setVisionEnabled] = useState(
+    initialConfig?.visionEnabled ?? false,
+  );
   const [runs, setRuns] = useState<RunLog[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const selected = agents.find((a) => a.id === selectedId);
 
-  const loadRuns = useCallback(async (configId: string) => {
-    const res = await fetch(`/api/admin/ai-studio/${configId}/runs`);
-    if (res.ok) {
-      const data = await res.json();
-      setRuns(data.runs);
-    }
-  }, []);
+  const selectAgent = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      const pub = publishedConfig(agents.find((a) => a.id === id));
+      if (pub) {
+        setPrompt(pub.systemPrompt);
+        setModel(pub.model);
+        setTemperature(pub.temperature);
+        setMaxTokens(pub.maxTokens);
+        setVisionEnabled(pub.visionEnabled);
+      }
+    },
+    [agents],
+  );
 
   useEffect(() => {
-    if (!selected) return;
-    const pub = selected.published ?? selected.versions[0];
-    if (pub) {
-      setPrompt(pub.systemPrompt);
-      setModel(pub.model);
-      setTemperature(pub.temperature);
-      setMaxTokens(pub.maxTokens);
-      setVisionEnabled(pub.visionEnabled);
-    }
-    loadRuns(selected.id);
-  }, [selected, loadRuns]);
+    if (!selectedId) return;
+    let cancelled = false;
+    void fetch(`/api/admin/ai-studio/${selectedId}/runs`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setRuns(data.runs);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   async function saveDraft() {
     if (!selected) return;
@@ -131,7 +145,7 @@ export function AiStudioClient({ initialAgents }: { initialAgents: AgentRow[] })
           <button
             key={a.id}
             type="button"
-            onClick={() => setSelectedId(a.id)}
+            onClick={() => selectAgent(a.id)}
             className={`block w-full rounded px-3 py-2 text-left text-sm ${
               a.id === selectedId ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"
             }`}
