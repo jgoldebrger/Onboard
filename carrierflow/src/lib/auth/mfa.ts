@@ -1,9 +1,4 @@
-import {
-  generateSecret,
-  generateSync,
-  generateURI,
-  verifySync,
-} from "otplib";
+import { generateSecret, generateURI, verifySync } from "otplib";
 import type { User, UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 

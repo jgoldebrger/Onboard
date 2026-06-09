@@ -102,7 +102,8 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    redirectTo: redirectTo ?? "/verify-email",
+    redirectTo:
+      redirectTo ?? (shouldAutoVerifyEmail() ? "/" : "/verify-email"),
     emailVerificationRequired: !shouldAutoVerifyEmail(),
   });
 }

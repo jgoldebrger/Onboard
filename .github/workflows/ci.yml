@@ -36,6 +36,8 @@ jobs:
       AUTH_URL: http://127.0.0.1:3000
       STORAGE_PROVIDER: local
       SEED_ADMIN_PASSWORD: changeme123
+      AUTO_VERIFY_EMAIL: "true"
+      REQUIRE_ADMIN_MFA: "false"
       NEXT_TELEMETRY_DISABLED: 1
       PRISMA_HIDE_UPDATE_MESSAGE: 1
 
@@ -82,3 +84,5 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          AUTO_VERIFY_EMAIL: "true"
+          REQUIRE_ADMIN_MFA: "false"
