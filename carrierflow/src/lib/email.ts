@@ -67,6 +67,25 @@ function complianceDistributionList(): string[] {
   return raw.split(",").map((e) => e.trim()).filter(Boolean);
 }
 
+export function onboardingReminderEmail(params: {
+  to: string;
+  companyLabel: string;
+  applicationId: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return sendTransactionalEmail({
+    to: params.to,
+    subject: "CarrierFlow: Complete your onboarding application",
+    html: `
+      <p>Hello,</p>
+      <p>Your carrier onboarding application for <strong>${params.companyLabel}</strong> is still in progress.</p>
+      <p>Please sign in and finish uploading documents and answering questions so Fabuwood can review your packet.</p>
+      <p><a href="${appUrl}/onboarding/${params.applicationId}">Continue onboarding</a></p>
+      <p>— CarrierFlow / Fabuwood</p>
+    `,
+  });
+}
+
 export function complianceAlertEmail(params: {
   carrierLabel: string;
   dotNumber?: string | null;

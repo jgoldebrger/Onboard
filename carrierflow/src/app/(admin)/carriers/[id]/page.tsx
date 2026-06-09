@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminNotesPanel } from "@/components/admin/admin-notes-panel";
 import { ApplicationActions } from "@/components/admin/application-actions";
+import { PacketDownloadButton } from "@/components/admin/packet-download-button";
 import { CarrierCompliancePanel } from "@/components/admin/compliance/carrier-compliance-panel";
 import { QualificationBadge } from "@/components/admin/compliance/qualification-badge";
 import { assessApplicationFraud, FraudPanel } from "@/lib/fraud";
@@ -42,6 +44,10 @@ export default async function CarrierDetailPage({ params }: Params) {
       riskAssessments: { orderBy: { assessedAt: "desc" } },
       approvalLogs: {
         include: { actor: { select: { email: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      adminNotes: {
+        include: { author: { select: { email: true } } },
         orderBy: { createdAt: "desc" },
       },
       carrierProfile: {
@@ -103,6 +109,9 @@ export default async function CarrierDetailPage({ params }: Params) {
           {latestGov?.dotNumber ? ` · DOT ${latestGov.dotNumber}` : null}
           {latestGov?.mcNumber ? ` · MC ${latestGov.mcNumber}` : null}
         </p>
+        <div className="mt-2">
+          <PacketDownloadButton applicationId={application.id} />
+        </div>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -126,6 +135,16 @@ export default async function CarrierDetailPage({ params }: Params) {
       ) : null}
 
       <ApplicationActions applicationId={application.id} />
+
+      <AdminNotesPanel
+        applicationId={application.id}
+        initialNotes={application.adminNotes.map((note) => ({
+          id: note.id,
+          body: note.body,
+          createdAt: note.createdAt.toISOString(),
+          authorEmail: note.author.email,
+        }))}
+      />
 
       <FraudPanel
         fraud={fraudAssessment}

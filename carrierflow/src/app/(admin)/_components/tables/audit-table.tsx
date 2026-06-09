@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { FraudLevel } from "@/lib/fraud/score";
 
@@ -81,6 +82,14 @@ export function AuditTable({ data }: { data: AuditLogRow[] }) {
     });
   }, [data, fraudLevelFilter, fraudOnly]);
 
+  const exportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (fraudLevelFilter) params.set("fraudLevel", fraudLevelFilter);
+    if (fraudOnly) params.set("fraudOnly", "true");
+    const qs = params.toString();
+    return `/api/admin/audit/export${qs ? `?${qs}` : ""}`;
+  }, [fraudLevelFilter, fraudOnly]);
+
   const toolbar = (
     <>
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -105,6 +114,9 @@ export function AuditTable({ data }: { data: AuditLogRow[] }) {
         />
         Fraud events only
       </label>
+      <Button type="button" variant="outline" size="sm" asChild>
+        <a href={exportHref}>Export CSV</a>
+      </Button>
     </>
   );
 

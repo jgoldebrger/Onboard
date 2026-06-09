@@ -17,6 +17,7 @@ export function OnboardingNav({
   const onChat =
     pathname === chatHref || pathname.startsWith(`${chatHref}/identity`);
   const onCompliance = pathname.startsWith(complianceHref);
+  const onProfile = pathname === "/settings/profile";
 
   return (
     <nav aria-label="Carrier navigation" className="space-y-2">
@@ -59,6 +60,28 @@ export function OnboardingNav({
             2
           </span>
           <span className="text-sm font-medium">COI renewal</span>
+        </Link>
+      ) : null}
+      {showComplianceNav ? (
+        <Link
+          href="/settings/profile"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
+            onProfile && "bg-accent text-accent-foreground",
+            !onProfile &&
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+              onProfile && "border-primary bg-primary text-primary-foreground",
+              !onProfile && "border-border bg-card",
+            )}
+          >
+            3
+          </span>
+          <span className="text-sm font-medium">Profile</span>
         </Link>
       ) : null}
       <p className="px-1 text-xs text-muted-foreground">

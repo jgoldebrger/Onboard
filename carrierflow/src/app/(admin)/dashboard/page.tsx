@@ -10,6 +10,8 @@ export default async function DashboardPage() {
   thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const [
     pendingReview,
@@ -18,7 +20,10 @@ export default async function DashboardPage() {
     openAlerts,
     expiringCoi,
     qualCounts,
+    statusCounts,
     recentSubmissions,
+    recentAudit,
+    idleInProgress,
   ] = await Promise.all([
     db.onboardingApplication.count({ where: { status: "PENDING_REVIEW" } }),
     db.onboardingApplication.count({ where: { status: "APPROVED" } }),
@@ -39,6 +44,10 @@ export default async function DashboardPage() {
       by: ["qualificationStatus"],
       _count: { _all: true },
     }),
+    db.onboardingApplication.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
     db.onboardingApplication.findMany({
       where: { submittedAt: { not: null } },
       orderBy: { submittedAt: "desc" },
@@ -48,6 +57,17 @@ export default async function DashboardPage() {
         status: true,
         submittedAt: true,
         user: { select: { email: true, companyName: true } },
+      },
+    }),
+    db.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { actor: { select: { email: true } } },
+    }),
+    db.onboardingApplication.count({
+      where: {
+        status: "IN_PROGRESS",
+        updatedAt: { lt: sevenDaysAgo },
       },
     }),
   ]);
@@ -77,12 +97,29 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Metric label="Pending review" value={pendingReview} href="/applications" />
         <Metric label="Approved carriers" value={approved} href="/carriers" />
+        <Metric label="Idle in progress (7d+)" value={idleInProgress} href="/applications" />
         <Metric label="Non-compliant" value={nonCompliant} href="/compliance" />
         <Metric label="Open alerts" value={openAlerts} href="/compliance" />
         <Metric label="COI expiring (30d)" value={expiringCoi} href="/carriers" />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Applications by status</h2>
+        <div className="flex flex-wrap gap-3">
+          {statusCounts.map((row) => (
+            <Link
+              key={row.status}
+              href="/applications"
+              className="rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
+            >
+              <span className="text-muted-foreground">{row.status}</span>
+              <span className="ml-2 font-semibold">{row._count._all}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -105,6 +142,34 @@ export default async function DashboardPage() {
             );
           })}
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Recent activity</h2>
+          <Link href="/audit" className="text-xs text-primary hover:underline">
+            Full audit log
+          </Link>
+        </div>
+        {recentAudit.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No audit entries yet.</p>
+        ) : (
+          <ul className="divide-y rounded-lg border text-sm">
+            {recentAudit.map((log) => (
+              <li
+                key={log.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
+              >
+                <span>
+                  {log.actor?.email ?? "system"} — {log.action} ({log.entityType})
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {log.createdAt.toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="space-y-3">

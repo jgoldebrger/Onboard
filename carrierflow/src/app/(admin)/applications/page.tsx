@@ -1,3 +1,4 @@
+import { OnboardingRemindersButton } from "@/components/admin/onboarding-reminders-button";
 import { db } from "@/lib/db";
 import { requireAdminPage } from "../_lib";
 import {
@@ -37,7 +38,10 @@ export default async function ApplicationsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Applications</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-xl font-semibold">Applications</h1>
+        <OnboardingRemindersButton />
+      </div>
       <ApplicationsTable data={rows} carrierTypes={carrierTypes} />
     </div>
   );

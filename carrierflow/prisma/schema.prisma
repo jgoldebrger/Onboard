@@ -91,6 +91,8 @@ model User {
   passwordHash    String?
   role            UserRole  @default(CARRIER)
   companyName     String?
+  contactPhone    String?
+  contactEmail    String?
   emailVerifiedAt DateTime?
   mfaSecret       String?
   mfaEnabled      Boolean   @default(false)
@@ -101,6 +103,7 @@ model User {
   fraudWaiversGiven       OnboardingApplication[]  @relation("FraudWaivers")
   approvalLogs            ApprovalLog[]
   auditLogs               AuditLog[]
+  adminNotes              ApplicationAdminNote[]
   emailVerificationTokens EmailVerificationToken[]
 }
 
@@ -224,10 +227,12 @@ model OnboardingApplication {
   fraudWaiverById     String?
   fraudWaiverScore    Int?
   fraudWaiverLevel    String?
+  lastOnboardingReminderAt DateTime?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
   user                 User                     @relation(fields: [userId], references: [id])
+  adminNotes           ApplicationAdminNote[]
   fraudWaiverBy        User?                    @relation("FraudWaivers", fields: [fraudWaiverById], references: [id])
   carrierType          CarrierType?             @relation(fields: [carrierTypeId], references: [id])
   answers              ApplicationAnswer[]
@@ -414,6 +419,20 @@ model RiskRule {
   isEnabled Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ApplicationAdminNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  authorId      String
+  body          String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author      User                  @relation(fields: [authorId], references: [id])
+
+  @@index([applicationId, createdAt])
 }
 
 model ApprovalLog {
