@@ -4,10 +4,19 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function ApplicationActions({ applicationId }: { applicationId: string }) {
+export function ApplicationActions({
+  applicationId,
+  status,
+}: {
+  applicationId: string;
+  status: string;
+}) {
   const router = useRouter();
   const [notes, setNotes] = useState("");
+  const [reopenReason, setReopenReason] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
+
+  const canReopen = status === "REJECTED" || status === "NEEDS_INFO";
 
   async function act(action: "approve" | "reject" | "request-info") {
     setLoading(action);
@@ -59,6 +68,44 @@ export function ApplicationActions({ applicationId }: { applicationId: string })
       >
         {loading === "request-info" ? "…" : "Request info"}
       </Button>
+      {canReopen ? (
+        <>
+          <label className="flex flex-col gap-1 text-sm w-full sm:w-auto">
+            Reopen reason
+            <input
+              className="rounded border px-2 py-1 min-w-[200px]"
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="Required to reopen"
+            />
+          </label>
+          <Button
+            type="button"
+            disabled={!!loading || !reopenReason.trim()}
+            variant="secondary"
+            onClick={async () => {
+              setLoading("reopen");
+              try {
+                const res = await fetch(
+                  `/api/admin/applications/${applicationId}/reopen`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ reason: reopenReason.trim() }),
+                  },
+                );
+                if (!res.ok) throw new Error(await res.text());
+                setReopenReason("");
+                router.refresh();
+              } finally {
+                setLoading(null);
+              }
+            }}
+          >
+            {loading === "reopen" ? "…" : "Reopen application"}
+          </Button>
+        </>
+      ) : null}
     </section>
   );
 }

@@ -85,6 +85,11 @@ enum ComplianceAlertStatus {
   RESOLVED
 }
 
+enum MessageAuthorRole {
+  ADMIN
+  CARRIER
+}
+
 model User {
   id              String    @id
   email           String    @unique
@@ -104,6 +109,7 @@ model User {
   approvalLogs            ApprovalLog[]
   auditLogs               AuditLog[]
   adminNotes              ApplicationAdminNote[]
+  applicationMessages     ApplicationMessage[]
   emailVerificationTokens EmailVerificationToken[]
 }
 
@@ -242,6 +248,21 @@ model OnboardingApplication {
   riskAssessments      RiskAssessment[]
   approvalLogs         ApprovalLog[]
   carrierProfile       CarrierProfile?
+  messages             ApplicationMessage[]
+}
+
+model ApplicationMessage {
+  id            String            @id @default(cuid())
+  applicationId String
+  authorId      String
+  authorRole    MessageAuthorRole
+  body          String            @db.Text
+  createdAt     DateTime          @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author      User                  @relation(fields: [authorId], references: [id])
+
+  @@index([applicationId, createdAt])
 }
 
 model CarrierProfile {

@@ -6,6 +6,9 @@ const emptyDuplicates = {
   duplicateDot: false,
   duplicateMc: false,
   duplicateEmail: false,
+  conflictingApplicationIds: [],
+  conflictingApplications: [],
+  details: [],
 };
 
 const emptyContact = {

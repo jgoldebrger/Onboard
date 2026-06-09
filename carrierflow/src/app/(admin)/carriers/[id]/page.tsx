@@ -5,7 +5,8 @@ import { ApplicationActions } from "@/components/admin/application-actions";
 import { PacketDownloadButton } from "@/components/admin/packet-download-button";
 import { CarrierCompliancePanel } from "@/components/admin/compliance/carrier-compliance-panel";
 import { QualificationBadge } from "@/components/admin/compliance/qualification-badge";
-import { assessApplicationFraud, FraudPanel } from "@/lib/fraud";
+import { DuplicateDotBanner } from "@/components/admin/duplicate-dot-banner";
+import { assessApplicationFraud, FraudPanel, getDuplicateWarnings } from "@/lib/fraud";
 import { CarrierDetailTabs } from "@/components/admin/carrier-detail-tabs";
 import { CarrierFmcsaRefresh } from "@/components/admin/carrier-fmcsa-refresh";
 import { groupDocumentsByType } from "@/lib/carriers/document-versions";
@@ -64,7 +65,10 @@ export default async function CarrierDetailPage({ params }: Params) {
 
   if (!application) notFound();
 
-  const fraudAssessment = await assessApplicationFraud(application.id);
+  const [fraudAssessment, duplicateWarnings] = await Promise.all([
+    assessApplicationFraud(application.id),
+    getDuplicateWarnings(application.id),
+  ]);
   const rawFraudAssessment = application.fraudWaiverAt
     ? await assessApplicationFraud(application.id, { ignoreWaiver: true })
     : fraudAssessment;
@@ -134,7 +138,14 @@ export default async function CarrierDetailPage({ params }: Params) {
         </section>
       ) : null}
 
-      <ApplicationActions applicationId={application.id} />
+      {duplicateWarnings ? (
+        <DuplicateDotBanner duplicates={duplicateWarnings} />
+      ) : null}
+
+      <ApplicationActions
+        applicationId={application.id}
+        status={application.status}
+      />
 
       <AdminNotesPanel
         applicationId={application.id}

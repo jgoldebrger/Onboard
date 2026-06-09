@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
+import { createApplicationMessage } from "@/lib/applications/messages";
 import { notifyCarrierOfStatusChange } from "@/lib/notify-carrier";
+import { emitWebhookEvent } from "@/lib/webhooks";
 import { db } from "@/lib/db";
 import { handleApiError, clientIp } from "../../../_utils";
 
@@ -42,7 +44,21 @@ export async function POST(req: Request, { params }: Params) {
       ipAddress: clientIp(req),
     });
 
+    if (body.notes?.trim()) {
+      await createApplicationMessage({
+        applicationId: id,
+        authorId: user.id,
+        authorRole: "ADMIN",
+        body: body.notes.trim(),
+      });
+    }
+
     await notifyCarrierOfStatusChange(id, "NEEDS_INFO", body.notes);
+    void emitWebhookEvent("application.request_info", {
+      applicationId: id,
+      status: updated.status,
+      notes: body.notes ?? null,
+    });
 
     return NextResponse.json({ status: updated.status });
   } catch (err) {

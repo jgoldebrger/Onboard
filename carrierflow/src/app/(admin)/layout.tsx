@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminNotificationBell } from "@/components/admin/admin-notification-bell";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
+import { getAdminNotificationCounts } from "@/lib/admin/notifications";
 import { requireAdminPage } from "./_lib";
 
 export default async function AdminLayout({
@@ -11,7 +13,10 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await requireAdminPage("applications:read");
-  const session = await auth();
+  const [session, notificationCounts] = await Promise.all([
+    auth(),
+    getAdminNotificationCounts(),
+  ]);
 
   async function signOutAction() {
     "use server";
@@ -30,6 +35,7 @@ export default async function AdminLayout({
               </span>
             </div>
             <div className="flex items-center gap-3">
+              <AdminNotificationBell initialCounts={notificationCounts} />
               {session?.user?.email ? (
                 <span className="hidden text-sm text-muted-foreground sm:inline">
                   {session.user.email}

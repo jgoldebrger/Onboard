@@ -10,6 +10,7 @@ import {
   RulesAdminClient,
   type AdminRuleRow,
 } from "@/components/rules-builder/rules-admin-client";
+import { RulesSimulator } from "@/components/rules-builder/rules-simulator";
 
 export default async function AdminRulesPage() {
   try {
@@ -29,6 +30,12 @@ export default async function AdminRulesPage() {
 
   const user = await getSessionUser();
   const canPublish = user ? hasPermission(user.role, "rules:publish") : false;
+
+  const carrierTypes = await db.carrierType.findMany({
+    where: { isActive: true },
+    select: { slug: true },
+    orderBy: { name: "asc" },
+  });
 
   const rules = await db.rule.findMany({
     include: { ruleVersion: true },
@@ -55,6 +62,11 @@ export default async function AdminRulesPage() {
   return (
     <main className="min-h-full bg-neutral-50">
       <RulesAdminClient initialRules={initialRules} canPublish={canPublish} />
+      <div className="mx-auto max-w-5xl px-6 pb-10">
+        <RulesSimulator
+          carrierTypeSlugs={carrierTypes.map((c) => c.slug)}
+        />
+      </div>
     </main>
   );
 }

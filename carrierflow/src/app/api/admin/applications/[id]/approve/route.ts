@@ -4,6 +4,7 @@ import { auditLog } from "@/lib/audit";
 import { ensureCarrierProfile } from "@/lib/compliance/profile";
 import { refreshCarrierCompliance } from "@/lib/compliance/refresh";
 import { notifyCarrierOfStatusChange } from "@/lib/notify-carrier";
+import { emitWebhookEvent } from "@/lib/webhooks";
 import { db } from "@/lib/db";
 import { handleApiError, clientIp } from "../../../_utils";
 
@@ -45,6 +46,11 @@ export async function POST(req: Request, { params }: Params) {
     });
 
     await notifyCarrierOfStatusChange(id, "APPROVED", body.notes);
+    void emitWebhookEvent("application.approved", {
+      applicationId: id,
+      status: updated.status,
+      notes: body.notes ?? null,
+    });
     await ensureCarrierProfile(id);
     void refreshCarrierCompliance(id).catch((err) =>
       console.error("Initial compliance refresh failed", id, err),

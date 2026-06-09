@@ -17,6 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DocumentChecklist } from "@/components/carrier/document-checklist";
+import { RequestInfoThread } from "@/components/carrier/request-info-thread";
 import { buildDocumentReviewDonePrompt } from "@/lib/interview/onboarding-state";
 import { cn } from "@/lib/utils";
 
@@ -131,7 +133,7 @@ export function InterviewChat({
     key: string;
     label: string;
   } | null>(null);
-  const [, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
   const [processingDocument, setProcessingDocument] =
     useState<ProcessingDocument | null>(null);
   const [progress, setProgress] = useState({
@@ -353,6 +355,20 @@ export function InterviewChat({
           {status.replace(/_/g, " ")}
         </Badge>
       </div>
+
+      <RequestInfoThread
+        applicationId={applicationId}
+        initialStatus={initialStatus}
+        onStatusChange={setStatus}
+      />
+
+      {!polling && documentTypes.length > 0 ? (
+        <DocumentChecklist
+          documents={documentTypes}
+          questionsAnswered={progress.questionsAnswered}
+          questionsTotal={progress.questionsTotal}
+        />
+      ) : null}
 
       {!polling ? (
         <Card className="border-accent/50 bg-accent/20">

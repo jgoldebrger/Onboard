@@ -6,6 +6,7 @@ import { isEmailVerified } from "@/lib/auth/email-verification";
 import { auditLog } from "@/lib/audit";
 import { assessApplicationFraud } from "@/lib/fraud";
 import { notifyCarrierOfStatusChange } from "@/lib/notify-carrier";
+import { emitWebhookEvent } from "@/lib/webhooks";
 import { db } from "@/lib/db";
 import { loadPublishedRules } from "@/lib/rules";
 import type { RuleVersionSnapshot } from "@/types/domain";
@@ -97,6 +98,12 @@ export async function POST(_req: Request, { params }: Params) {
   });
 
   await notifyCarrierOfStatusChange(id, "PENDING_REVIEW");
+  void emitWebhookEvent("application.submitted", {
+    applicationId: id,
+    status: "PENDING_REVIEW",
+    fraudScore: fraud.score,
+    fraudLevel: fraud.level,
+  });
 
   return NextResponse.json({
     status: "PENDING_REVIEW",
