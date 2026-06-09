@@ -229,6 +229,21 @@ export async function getOnboardingProgress(
     identity?.dlStorageKey && identity?.selfieStorageKey,
   );
 
+  let blocked = requirements.blocked;
+  let blockReasons = [...requirements.blockReasons];
+
+  if (hasDotAnswer && !blocked) {
+    const fraud = await assessApplicationFraud(applicationId);
+    if (fraud.blockOnboarding) {
+      blocked = true;
+      blockReasons = [
+        ...blockReasons,
+        `Fraud risk score ${fraud.score} (${fraud.level}) — contact support before submitting`,
+        ...fraud.signals.map((s) => s.label),
+      ];
+    }
+  }
+
   let phase: OnboardingPhase;
   let nextPrompt: NextPrompt | null;
 
@@ -249,8 +264,8 @@ export async function getOnboardingProgress(
     const prompt = buildInterviewReply({
       missingQuestions: interviewState.missingQuestions,
       carrierTypeSlug,
-      blocked: interviewState.blocked,
-      blockReasons: interviewState.blockReasons,
+      blocked,
+      blockReasons,
     });
     nextPrompt = {
       kind: "question",
@@ -283,21 +298,6 @@ export async function getOnboardingProgress(
   } else {
     phase = "complete";
     nextPrompt = { kind: "complete", prompt: buildCompletePrompt() };
-  }
-
-  let blocked = requirements.blocked;
-  let blockReasons = [...requirements.blockReasons];
-
-  if (phase === "complete" && !blocked) {
-    const fraud = await assessApplicationFraud(applicationId);
-    if (fraud.blockOnboarding) {
-      blocked = true;
-      blockReasons = [
-        ...blockReasons,
-        `Fraud risk score ${fraud.score} (${fraud.level}) — contact support before submitting`,
-        ...fraud.signals.map((s) => s.label),
-      ];
-    }
   }
 
   return {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { ensureCarrierProfile } from "@/lib/compliance/profile";
+import { refreshCarrierCompliance } from "@/lib/compliance/refresh";
 import { notifyCarrierOfStatusChange } from "@/lib/notify-carrier";
 import { db } from "@/lib/db";
 import { handleApiError, clientIp } from "../../../_utils";
@@ -45,6 +46,9 @@ export async function POST(req: Request, { params }: Params) {
 
     await notifyCarrierOfStatusChange(id, "APPROVED", body.notes);
     await ensureCarrierProfile(id);
+    void refreshCarrierCompliance(id).catch((err) =>
+      console.error("Initial compliance refresh failed", id, err),
+    );
 
     return NextResponse.json({ status: updated.status });
   } catch (err) {

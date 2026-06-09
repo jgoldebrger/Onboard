@@ -18,6 +18,7 @@ Enterprise carrier onboarding SaaS (Fabuwood). Stack: Next.js App Router, Prisma
 | `src/jobs/**`, `lib/ocr/**`, `lib/agents/document-review.ts` | Wave 3A |
 | `src/lib/fmcsa/**`, `lib/agents/verification.ts` | Wave 3B |
 | `src/lib/agents/identity*`, `api/identity/**` | Wave 3C |
+| `src/lib/compliance/**`, `src/lib/fraud/**`, compliance Inngest jobs | Compliance wave |
 
 ## Rules
 
@@ -25,6 +26,7 @@ Enterprise carrier onboarding SaaS (Fabuwood). Stack: Next.js App Router, Prisma
 2. No Supabase/Prisma from the browser — server routes only.
 3. Do not edit `schema.prisma` or `package.json` without parent approval.
 4. Phase 1: form-based rules builder; default prompts in code; document review uses SSE (EventSource) with poll fallback.
+5. Post-approval compliance (`src/lib/compliance/`) needs Inngest keys (`INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`) for daily crons; approve triggers an initial refresh synchronously.
 
 ## Commands
 
