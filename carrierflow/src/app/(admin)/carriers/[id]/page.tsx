@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApplicationActions } from "@/components/admin/application-actions";
+import { CarrierCompliancePanel } from "@/components/admin/compliance/carrier-compliance-panel";
+import { QualificationBadge } from "@/components/admin/compliance/qualification-badge";
+import { assessApplicationFraud, FraudPanel } from "@/lib/fraud";
 import { CarrierDetailTabs } from "@/components/admin/carrier-detail-tabs";
 import { CarrierFmcsaRefresh } from "@/components/admin/carrier-fmcsa-refresh";
 import { groupDocumentsByType } from "@/lib/carriers/document-versions";
@@ -41,10 +44,21 @@ export default async function CarrierDetailPage({ params }: Params) {
         include: { actor: { select: { email: true } } },
         orderBy: { createdAt: "desc" },
       },
+      carrierProfile: {
+        include: {
+          snapshots: { orderBy: { checkedAt: "desc" }, take: 20 },
+          alerts: {
+            where: { status: "OPEN" },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      },
     },
   });
 
   if (!application) notFound();
+
+  const fraudAssessment = await assessApplicationFraud(application.id);
 
   const latestGov = application.govVerifications[0];
   const rawResponse = latestGov?.rawResponse ?? null;
@@ -73,7 +87,14 @@ export default async function CarrierDetailPage({ params }: Params) {
         <Link href="/carriers" className="text-sm text-primary hover:underline">
           ← Carriers
         </Link>
-        <h1 className="mt-2 text-xl font-semibold">{displayName}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="text-xl font-semibold">{displayName}</h1>
+          {application.status === "APPROVED" ? (
+            <QualificationBadge
+              status={application.carrierProfile?.qualificationStatus}
+            />
+          ) : null}
+        </div>
         <p className="text-sm text-muted-foreground">
           {application.user.email}
           {latestGov?.dotNumber ? ` · DOT ${latestGov.dotNumber}` : null}
@@ -103,10 +124,57 @@ export default async function CarrierDetailPage({ params }: Params) {
 
       <ApplicationActions applicationId={application.id} />
 
+      <FraudPanel
+        fraud={fraudAssessment}
+        contactDiscrepancies={fraudAssessment.contactDiscrepancies}
+      />
+
       <CarrierFmcsaRefresh
         applicationId={application.id}
         needsFullSync={Boolean(latestGov && !hasExtendedSaferData(rawResponse))}
       />
+
+      {application.status === "APPROVED" ? (
+        <section className="rounded-lg border border-border p-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Compliance monitoring</h2>
+            <Link
+              href="/compliance"
+              className="text-sm text-primary hover:underline"
+            >
+              Open alert inbox
+            </Link>
+          </div>
+          <CarrierCompliancePanel
+            qualificationStatus={
+              application.carrierProfile?.qualificationStatus ?? null
+            }
+            lastCheckedAt={
+              application.carrierProfile?.lastCheckedAt?.toISOString() ?? null
+            }
+            snapshots={
+              application.carrierProfile?.snapshots.map((s) => ({
+                id: s.id,
+                checkedAt: s.checkedAt.toISOString(),
+                qualificationStatus: s.qualificationStatus,
+                derivedFlags: s.derivedFlags,
+                fmcsaData: s.fmcsaData as Record<string, unknown> | null,
+                documentFlags: s.documentFlags,
+              })) ?? []
+            }
+            openAlerts={
+              application.carrierProfile?.alerts.map((a) => ({
+                id: a.id,
+                type: a.type,
+                severity: a.severity,
+                title: a.title,
+                message: a.message,
+                createdAt: a.createdAt.toISOString(),
+              })) ?? []
+            }
+          />
+        </section>
+      ) : null}
 
       <CarrierDetailTabs
         applicationId={application.id}

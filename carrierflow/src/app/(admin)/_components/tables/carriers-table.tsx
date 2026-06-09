@@ -1,7 +1,9 @@
 "use client";
 
+import type { QualificationStatus } from "@prisma/client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { QualificationBadge } from "@/components/admin/compliance/qualification-badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 export type CarrierRow = {
@@ -18,6 +20,9 @@ export type CarrierRow = {
   riskScore: number;
   riskLevel: string;
   updatedAt: string;
+  qualificationStatus: QualificationStatus | null;
+  lastComplianceCheck: string | null;
+  coiExpirationDate: string | null;
 };
 
 type CarrierTypeOption = { id: string; name: string };
@@ -57,6 +62,13 @@ const columns: DataTableColumn<CarrierRow>[] = [
     header: "Status",
     cell: (row) => row.status,
     sortValue: (row) => row.status,
+  },
+  {
+    id: "qualification",
+    header: "Qualification",
+    cell: (row) => <QualificationBadge status={row.qualificationStatus} />,
+    sortValue: (row) => row.qualificationStatus ?? "",
+    filterValue: (row) => row.qualificationStatus ?? "",
   },
   {
     id: "safer",
@@ -104,6 +116,9 @@ export function CarriersTable({
   const [statusFilter, setStatusFilter] = useState("");
   const [carrierFilter, setCarrierFilter] = useState("");
   const [saferFilter, setSaferFilter] = useState("");
+  const [qualFilter, setQualFilter] = useState("");
+  const [riskFilter, setRiskFilter] = useState("");
+  const [insuranceFilter, setInsuranceFilter] = useState("");
 
   const filteredData = useMemo(() => {
     return data.filter((row) => {
@@ -111,9 +126,33 @@ export function CarriersTable({
       if (carrierFilter && row.carrierTypeId !== carrierFilter) return false;
       if (saferFilter === "synced" && !row.verificationStatus) return false;
       if (saferFilter === "none" && row.verificationStatus) return false;
+      if (qualFilter && row.qualificationStatus !== qualFilter) return false;
+      if (riskFilter && row.riskLevel !== riskFilter) return false;
+      if (insuranceFilter === "30" && row.coiExpirationDate) {
+        const exp = new Date(row.coiExpirationDate);
+        const soon = new Date();
+        soon.setDate(soon.getDate() + 30);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (exp > soon || exp < today) return false;
+      }
+      if (insuranceFilter === "expired" && row.coiExpirationDate) {
+        const exp = new Date(row.coiExpirationDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (exp >= today) return false;
+      }
       return true;
     });
-  }, [data, statusFilter, carrierFilter, saferFilter]);
+  }, [
+    data,
+    statusFilter,
+    carrierFilter,
+    saferFilter,
+    qualFilter,
+    riskFilter,
+    insuranceFilter,
+  ]);
 
   const statuses = useMemo(
     () => [...new Set(data.map((r) => r.status))].sort(),
@@ -164,6 +203,51 @@ export function CarriersTable({
           <option value="none">Not synced</option>
         </select>
       </label>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Qualification</span>
+        <select
+          className="rounded-md border border-input bg-card px-2 py-1 text-foreground"
+          value={qualFilter}
+          onChange={(e) => setQualFilter(e.target.value)}
+        >
+          <option value="">All</option>
+          <option value="COMPLIANT">Compliant</option>
+          <option value="ATTENTION">Attention</option>
+          <option value="NON_COMPLIANT">Non-compliant</option>
+          <option value="SUSPENDED">Suspended</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Risk</span>
+        <select
+          className="rounded-md border border-input bg-card px-2 py-1 text-foreground"
+          value={riskFilter}
+          onChange={(e) => setRiskFilter(e.target.value)}
+        >
+          <option value="">All</option>
+          <option value="LOW">Low</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HIGH">High</option>
+        </select>
+      </label>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>COI expiry</span>
+        <select
+          className="rounded-md border border-input bg-card px-2 py-1 text-foreground"
+          value={insuranceFilter}
+          onChange={(e) => setInsuranceFilter(e.target.value)}
+        >
+          <option value="">All</option>
+          <option value="30">Within 30 days</option>
+          <option value="expired">Expired</option>
+        </select>
+      </label>
+      <a
+        href="/api/admin/carriers/export"
+        className="rounded-md border border-input bg-card px-3 py-1 text-sm text-foreground hover:bg-muted"
+      >
+        Export CSV
+      </a>
     </>
   );
 

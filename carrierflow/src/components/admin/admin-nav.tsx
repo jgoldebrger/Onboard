@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/carriers", label: "Carriers" },
+  { href: "/compliance", label: "Compliance" },
   { href: "/applications", label: "Applications" },
   { href: "/carrier-types", label: "Carrier types" },
   { href: "/questions", label: "Questions" },

@@ -84,6 +84,20 @@ export function applyActions(
         });
         break;
       }
+      case "OPTIONAL":
+        if (action.targetType === "question") {
+          const idx = result.requiredQuestionIds.indexOf(action.targetId);
+          if (idx >= 0) {
+            result.requiredQuestionIds.splice(idx, 1);
+          }
+        }
+        if (action.targetType === "document") {
+          const idx = result.requiredDocumentTypeIds.indexOf(action.targetId);
+          if (idx >= 0) {
+            result.requiredDocumentTypeIds.splice(idx, 1);
+          }
+        }
+        break;
       default:
         break;
     }

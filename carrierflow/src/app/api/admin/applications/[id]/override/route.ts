@@ -77,10 +77,23 @@ export async function POST(req: Request, { params }: Params) {
       });
       after = { status: updated.status, requiresHumanReview: updated.requiresHumanReview };
     } else {
-      return NextResponse.json(
-        { error: "Rule override not implemented in Phase 1" },
-        { status: 501 },
-      );
+      const rule = await db.rule.findUnique({
+        where: { id: body.entityId },
+        include: { ruleVersion: true },
+      });
+      if (!rule) {
+        return NextResponse.json({ error: "Rule not found" }, { status: 404 });
+      }
+      before = { isEnabled: rule.isEnabled };
+      const updated = await db.rule.update({
+        where: { id: rule.id },
+        data: { isEnabled: false },
+      });
+      after = {
+        isEnabled: updated.isEnabled,
+        overridden: true,
+        ruleVersionId: rule.ruleVersionId,
+      };
     }
 
     await db.approvalLog.create({

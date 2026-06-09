@@ -1,8 +1,16 @@
+import type { VerificationStatus } from "@prisma/client";
 import OpenAI from "openai";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { logAgentRun, resolveAgentConfig } from "@/lib/agents/resolve-config";
 import { loadDocumentBytes } from "@/lib/ocr";
+
+const AUTO_PASS_CONFIDENCE = Number(
+  process.env.IDENTITY_AUTO_PASS_CONFIDENCE ?? 0.92,
+);
+const HARD_FAIL_CONFIDENCE = Number(
+  process.env.IDENTITY_HARD_FAIL_CONFIDENCE ?? 0.4,
+);
 
 const identityResultSchema = z.object({
   faceDetected: z.boolean(),
@@ -12,6 +20,26 @@ const identityResultSchema = z.object({
 });
 
 export type IdentityCompareResult = z.infer<typeof identityResultSchema>;
+
+export type IdentityDecision = {
+  status: VerificationStatus;
+  requiresHumanReview: boolean;
+};
+
+export function resolveIdentityDecision(
+  compare: IdentityCompareResult,
+): IdentityDecision {
+  if (!compare.faceDetected) {
+    return { status: "FAILED", requiresHumanReview: true };
+  }
+  if (!compare.match || compare.confidence < HARD_FAIL_CONFIDENCE) {
+    return { status: "FAILED", requiresHumanReview: true };
+  }
+  if (compare.match && compare.confidence >= AUTO_PASS_CONFIDENCE) {
+    return { status: "PASSED", requiresHumanReview: false };
+  }
+  return { status: "MANUAL_REVIEW", requiresHumanReview: true };
+}
 
 const IDENTITY_PROMPT = `Compare the face on the driver's license to the selfie.
 Extract name and document number if visible. Always recommend human review for final approval.

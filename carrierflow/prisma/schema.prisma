@@ -62,6 +62,29 @@ enum DocumentReviewStatus {
   NEEDS_REVIEW
 }
 
+enum QualificationStatus {
+  COMPLIANT
+  ATTENTION
+  NON_COMPLIANT
+  SUSPENDED
+}
+
+enum ComplianceAlertType {
+  INSURANCE_EXPIRING
+  INSURANCE_EXPIRED
+  AUTHORITY_INACTIVE
+  CSA_THRESHOLD
+  DOC_EXPIRED
+  FMCSA_DATA_CHANGED
+  RULE_VIOLATION
+}
+
+enum ComplianceAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
 model User {
   id           String   @id
   email        String   @unique
@@ -190,6 +213,81 @@ model OnboardingApplication {
   identityVerification IdentityVerification?
   riskAssessments      RiskAssessment[]
   approvalLogs         ApprovalLog[]
+  carrierProfile       CarrierProfile?
+}
+
+model CarrierProfile {
+  id                  String              @id @default(cuid())
+  applicationId       String              @unique
+  dotNumber           String?
+  mcNumber            String?
+  legalName           String?
+  qualificationStatus QualificationStatus @default(COMPLIANT)
+  lastCheckedAt       DateTime?
+  approvedAt          DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  application        OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  snapshots          ComplianceSnapshot[]
+  alerts             ComplianceAlert[]
+  monitoredDocuments MonitoredDocument[]
+}
+
+model ComplianceSnapshot {
+  id                  String              @id @default(cuid())
+  carrierProfileId    String
+  fmcsaData           Json?
+  documentFlags       Json?
+  ruleResults         Json?
+  derivedFlags        String[]
+  qualificationStatus QualificationStatus
+  checkedAt           DateTime            @default(now())
+
+  carrierProfile CarrierProfile @relation(fields: [carrierProfileId], references: [id], onDelete: Cascade)
+
+  @@index([carrierProfileId, checkedAt])
+}
+
+model ComplianceAlert {
+  id                 String                @id @default(cuid())
+  carrierProfileId   String
+  type               ComplianceAlertType
+  status             ComplianceAlertStatus @default(OPEN)
+  severity           String                @default("medium")
+  title              String
+  message            String?
+  metadata           Json?
+  acknowledgedAt     DateTime?
+  acknowledgedById   String?
+  acknowledgedNotes  String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  carrierProfile CarrierProfile @relation(fields: [carrierProfileId], references: [id], onDelete: Cascade)
+
+  @@index([carrierProfileId, status])
+  @@index([status, createdAt])
+}
+
+model MonitoredDocument {
+  id                String    @id @default(cuid())
+  carrierProfileId  String
+  documentTypeKey   String
+  documentId        String?
+  policyNumber      String?
+  limits            Json?
+  effectiveDate     DateTime?
+  expirationDate    DateTime?
+  certificateHolder String?
+  extractedData     Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  carrierProfile CarrierProfile @relation(fields: [carrierProfileId], references: [id], onDelete: Cascade)
+
+  @@index([carrierProfileId, documentTypeKey])
+  @@index([expirationDate])
 }
 
 model ApplicationAnswer {

@@ -3,7 +3,10 @@ import path from "path";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { runIdentityCompare } from "@/lib/agents/identity";
+import {
+  resolveIdentityDecision,
+  runIdentityCompare,
+} from "@/lib/agents/identity";
 import { db } from "@/lib/db";
 import {
   buildStoragePath,
@@ -66,6 +69,7 @@ export async function POST(req: Request, { params }: Params) {
     dlStorageKey: dlStored.storageKey,
     selfieStorageKey: selfieStored.storageKey,
   });
+  const decision = resolveIdentityDecision(compare);
 
   const identity = await db.identityVerification.upsert({
     where: { applicationId },
@@ -77,8 +81,8 @@ export async function POST(req: Request, { params }: Params) {
       faceDetected: compare.faceDetected,
       match: compare.match,
       confidence: compare.confidence,
-      status: "MANUAL_REVIEW",
-      requiresHumanReview: true,
+      status: decision.status,
+      requiresHumanReview: decision.requiresHumanReview,
     },
     update: {
       dlStorageKey: dlStored.storageKey,
@@ -87,8 +91,8 @@ export async function POST(req: Request, { params }: Params) {
       faceDetected: compare.faceDetected,
       match: compare.match,
       confidence: compare.confidence,
-      status: "MANUAL_REVIEW",
-      requiresHumanReview: true,
+      status: decision.status,
+      requiresHumanReview: decision.requiresHumanReview,
     },
   });
 

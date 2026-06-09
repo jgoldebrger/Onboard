@@ -35,6 +35,16 @@ const DOCUMENT_TYPES = [
     name: "Operating Authority",
     mimeTypes: ["application/pdf"],
   },
+  {
+    key: "broker-carrier-agreement",
+    name: "Broker-Carrier Agreement",
+    mimeTypes: ["application/pdf"],
+  },
+  {
+    key: "notice-of-assignment",
+    name: "Notice of Assignment",
+    mimeTypes: ["application/pdf"],
+  },
 ];
 
 const QUESTIONS = [
@@ -65,7 +75,24 @@ const QUESTIONS = [
     label: "Fleet size",
     type: QuestionType.NUMBER,
   },
+  {
+    key: "safety_questionnaire_complete",
+    label: "Carrier safety questionnaire completed?",
+    type: QuestionType.YES_NO,
+  },
 ];
+
+/** Required docs per carrier type slug (keys must match DOCUMENT_TYPES). */
+const PACKET_BY_CARRIER_TYPE: Record<string, string[]> = {
+  broker: ["w9", "coi", "broker-authority", "broker-carrier-agreement"],
+  "final-mile": ["w9", "coi", "operating-authority"],
+  "long-haul": ["w9", "coi", "operating-authority"],
+  "dedicated-fleet": ["w9", "coi", "operating-authority"],
+  "owner-operator": ["w9", "coi", "operating-authority"],
+  "white-glove": ["w9", "coi", "operating-authority"],
+  ltl: ["w9", "coi", "operating-authority"],
+  ftl: ["w9", "coi", "operating-authority", "notice-of-assignment"],
+};
 
 const AGENT_CONFIGS = [
   { key: "interview", name: "Interview Agent" },
@@ -138,22 +165,49 @@ async function main() {
     });
   }
 
-  const brokerType = await db.carrierType.findFirst({
-    where: { slug: "broker", partnerTypeId: partner.id },
-  });
-  const coi = await db.documentType.findUnique({ where: { key: "coi" } });
-
-  if (brokerType && coi) {
-    const brokerQuestions = await db.question.findMany({
-      where: {
-        key: { in: ["dot_number", "company_legal_name", "mc_number"] },
+  const coreQuestions = await db.question.findMany({
+    where: {
+      key: {
+        in: [
+          "dot_number",
+          "company_legal_name",
+          "mc_number",
+          "safety_questionnaire_complete",
+        ],
       },
+    },
+  });
+  const docTypes = await db.documentType.findMany();
+  const docByKey = new Map(docTypes.map((d) => [d.key, d]));
+
+  const carrierTypes = await db.carrierType.findMany({
+    where: { partnerTypeId: partner.id },
+  });
+
+  for (const ct of carrierTypes) {
+    const docKeys = PACKET_BY_CARRIER_TYPE[ct.slug];
+    if (!docKeys) continue;
+
+    const existing = await db.ruleVersion.findFirst({
+      where: { name: `requirements/${ct.slug}` },
+      orderBy: { version: "desc" },
     });
+    if (existing?.isPublished) continue;
+
+    const docActions = docKeys
+      .map((key) => docByKey.get(key))
+      .filter(Boolean)
+      .map((doc) => ({
+        effect: "REQUIRE" as const,
+        targetType: "document" as const,
+        targetId: doc!.id,
+      }));
+
     const ruleVersion = await db.ruleVersion.create({
       data: {
-        name: "requirements/broker",
-        description: "Required questions and documents for Broker",
-        version: 1,
+        name: `requirements/${ct.slug}`,
+        description: `Required questions and documents for ${ct.name}`,
+        version: (existing?.version ?? 0) + 1,
         isPublished: true,
         publishedAt: new Date(),
         conditions: {
@@ -164,21 +218,17 @@ async function main() {
               type: "clause",
               field: "carrier_type",
               operator: "eq",
-              value: "broker",
+              value: ct.slug,
             },
           ],
         },
         actions: [
-          ...brokerQuestions.map((q) => ({
+          ...coreQuestions.map((q) => ({
             effect: "REQUIRE" as const,
             targetType: "question" as const,
             targetId: q.id,
           })),
-          {
-            effect: "REQUIRE",
-            targetType: "document",
-            targetId: coi.id,
-          },
+          ...docActions,
         ],
       },
     });
@@ -206,6 +256,38 @@ async function main() {
       },
     },
     update: { points: 20, isEnabled: true },
+  });
+
+  await db.riskRule.upsert({
+    where: { key: "duplicate_dot" },
+    create: {
+      key: "duplicate_dot",
+      label: "Duplicate DOT on another application",
+      points: 40,
+      condition: {
+        type: "clause",
+        field: "fraud.duplicate_dot",
+        operator: "eq",
+        value: true,
+      },
+    },
+    update: { points: 40, isEnabled: true },
+  });
+
+  await db.riskRule.upsert({
+    where: { key: "contact_discrepancy" },
+    create: {
+      key: "contact_discrepancy",
+      label: "FMCSA contact discrepancy",
+      points: 25,
+      condition: {
+        type: "clause",
+        field: "fraud.contact_mismatch",
+        operator: "eq",
+        value: true,
+      },
+    },
+    update: { points: 25, isEnabled: true },
   });
 
   await db.riskRule.upsert({

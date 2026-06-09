@@ -1,4 +1,5 @@
 import type { FmcsaSyncResult } from "./persist-for-application";
+import { buildStructuredCrossReferenceAlerts } from "./cross-reference";
 
 export function buildDotFirstPrompt(): string {
   return (
@@ -64,6 +65,18 @@ export function buildFmcsaCrossReferenceMessage(
   }
 
   return lines.join("\n");
+}
+
+/** Structured alerts for fraud scoring and admin review. */
+export function getFmcsaCrossReferenceAlerts(
+  sync: FmcsaSyncResult | null,
+  application: {
+    companyLegalName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  },
+) {
+  return buildStructuredCrossReferenceAlerts(sync, application);
 }
 
 function humanizeQuestionKey(key: string): string {
