@@ -24,6 +24,9 @@ export function computeFraudScore(input: {
   identityLowConfidence?: boolean;
   invalidEin?: boolean;
   disposableEmail?: boolean;
+  voipPhone?: boolean;
+  disposablePhone?: boolean;
+  tinMismatch?: boolean;
 }): FraudScoreResult {
   const signals: FraudSignal[] = [];
 
@@ -90,6 +93,30 @@ export function computeFraudScore(input: {
       key: "disposable_email",
       label: "Disposable email domain",
       points: 25,
+      severity: "high",
+    });
+  }
+  if (input.voipPhone) {
+    signals.push({
+      key: "voip_phone",
+      label: "VoIP phone number detected",
+      points: 20,
+      severity: "medium",
+    });
+  }
+  if (input.disposablePhone) {
+    signals.push({
+      key: "disposable_phone",
+      label: "Disposable or burner phone line",
+      points: 30,
+      severity: "high",
+    });
+  }
+  if (input.tinMismatch) {
+    signals.push({
+      key: "tin_mismatch",
+      label: "TIN does not match legal name",
+      points: 35,
       severity: "high",
     });
   }

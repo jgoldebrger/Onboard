@@ -2,8 +2,10 @@ import { db } from "@/lib/db";
 import { checkDuplicateCarrier } from "./duplicate-dot";
 import { scoreContactDiscrepancies } from "./contact-discrepancy";
 import { extractEinFromW9, validateEinFormat } from "./tin";
+import { verifyTin } from "./tin-verify";
 import { computeFraudScore, type FraudScoreResult } from "./score";
 import { isDisposableEmail } from "./disposable-email";
+import { verifyPhone } from "./phone-verify";
 
 function formatFmcsaAddress(value: unknown): string | null {
   if (!value) return null;
@@ -93,6 +95,20 @@ export async function assessApplicationFraud(
   );
 
   const identity = application.identityVerification;
+  const phone = String(
+    answerMap.get("phone") ?? answerMap.get("contact_phone") ?? "",
+  );
+  const companyLegalName = String(
+    answerMap.get("company_legal_name") ?? gov?.companyName ?? "",
+  );
+
+  const [phoneVerify, tinVerify] = await Promise.all([
+    phone ? verifyPhone(phone) : Promise.resolve(null),
+    ein && companyLegalName
+      ? verifyTin({ tin: ein, name: companyLegalName })
+      : Promise.resolve(null),
+  ]);
+
   const fraud = computeFraudScore({
     duplicates,
     contactDiscrepancy,
@@ -101,6 +117,10 @@ export async function assessApplicationFraud(
       identity?.confidence != null && identity.confidence < 0.75,
     invalidEin: w9Doc != null && ein != null && !validateEinFormat(ein),
     disposableEmail: isDisposableEmail(application.user.email),
+    voipPhone: phoneVerify?.available === true && phoneVerify.isVoip === true,
+    disposablePhone:
+      phoneVerify?.available === true && phoneVerify.isDisposable === true,
+    tinMismatch: tinVerify?.available === true && tinVerify.match === false,
   });
 
   return { ...fraud, contactDiscrepancies: contactDiscrepancy };
