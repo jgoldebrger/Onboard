@@ -47,22 +47,33 @@ export async function completeBrokerOnboardingChat(page: Page) {
 
 async function uploadAllChatDocuments(page: Page) {
   const uploadPattern = /^Upload /;
+  const identityBtn = page.getByRole("button", { name: "Submit identity verification" });
+  const nextDocOrIdentity = page
+    .getByRole("button", { name: uploadPattern })
+    .or(identityBtn);
 
-  for (let i = 0; i < 6; i++) {
-    const uploadBtn = page.getByRole("button", { name: uploadPattern });
-    const visible = await uploadBtn
-      .first()
-      .isVisible({ timeout: i === 0 ? 60_000 : 5_000 })
-      .catch(() => false);
-    if (!visible) break;
+  await expect(page.getByRole("button", { name: uploadPattern }).first()).toBeVisible({
+    timeout: 60_000,
+  });
 
-    const currentUpload = uploadBtn.first();
-    const label = (await currentUpload.textContent()) ?? `Upload document ${i + 1}`;
+  for (let i = 0; i < 8; i++) {
+    if (await identityBtn.isVisible().catch(() => false)) return;
+
+    const uploadBtn = page.getByRole("button", { name: uploadPattern }).first();
+    if (!(await uploadBtn.isVisible().catch(() => false))) {
+      await expect(identityBtn).toBeVisible({ timeout: 120_000 });
+      return;
+    }
+
+    const label = (await uploadBtn.textContent()) ?? `Upload document ${i + 1}`;
     await page.locator('input[name="file"]').setInputFiles(fixturePath);
-    await currentUpload.click();
+    await uploadBtn.click();
     await expect(page.getByRole("button", { name: label, exact: true })).toBeHidden({
       timeout: 60_000,
     });
+
+    // Document review is async (inline in CI); wait for chat to advance.
+    await expect(nextDocOrIdentity.first()).toBeVisible({ timeout: 120_000 });
   }
 }
 

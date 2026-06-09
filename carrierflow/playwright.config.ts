@@ -26,6 +26,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
+      CI: process.env.CI ?? "",
       PORT: String(port),
       AUTH_URL: baseURL,
       AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-test-auth-secret",
