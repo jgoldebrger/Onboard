@@ -51,38 +51,32 @@ function reviewProgressLocator(page: Page) {
   return page.getByRole("progressbar", { name: /Document review/i });
 }
 
-/** Wait until no document review progress bar is shown (chat is ready for upload). */
-async function waitForNoActiveDocumentReview(page: Page) {
-  await expect(reviewProgressLocator(page)).toBeHidden({ timeout: 120_000 });
-}
-
-/** After submit, the upload form is replaced by review progress until review finishes. */
+/**
+ * After submit, the upload form is replaced by review progress until review finishes.
+ * Review may complete before the progress bar paints in CI, so only wait when it appears.
+ */
 async function waitForDocumentReviewComplete(page: Page) {
   const progress = reviewProgressLocator(page);
-  await expect(progress).toBeVisible({ timeout: 30_000 });
-  await expect(progress).toBeHidden({ timeout: 120_000 });
+  await progress.waitFor({ state: "visible", timeout: 5_000 }).catch(() => {});
+  if (await progress.isVisible().catch(() => false)) {
+    await expect(progress).toBeHidden({ timeout: 120_000 });
+  }
 }
 
 /**
- * Set file on the upload form and click submit, re-querying the button on each
- * attempt so a React re-render (review progress replacing the form) cannot
- * detach a stale locator mid-click.
+ * Set file on the visible upload form and click submit, re-querying the button on each
+ * attempt so a React re-render (review progress replacing the form) cannot detach a stale
+ * locator mid-click.
  */
-async function submitChatDocumentUpload(page: Page): Promise<string | null> {
-  await waitForNoActiveDocumentReview(page);
-
-  const firstUpload = page.getByRole("button", { name: UPLOAD_BUTTON }).first();
-  if (!(await firstUpload.isVisible().catch(() => false))) {
-    return null;
-  }
-
-  const label = ((await firstUpload.textContent()) ?? "Upload document").trim();
-
+async function submitChatDocumentUpload(
+  page: Page,
+  label: string,
+): Promise<void> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    await waitForNoActiveDocumentReview(page);
-
     const uploadBtn = page.getByRole("button", { name: label, exact: true });
-    await expect(uploadBtn).toBeVisible({ timeout: 10_000 });
+    if (!(await uploadBtn.isVisible().catch(() => false))) {
+      throw new Error(`Upload button not visible: ${label}`);
+    }
     await expect(uploadBtn).toBeEnabled({ timeout: 10_000 });
 
     const fileInput = page
@@ -93,7 +87,7 @@ async function submitChatDocumentUpload(page: Page): Promise<string | null> {
 
     try {
       await uploadBtn.click({ force: false, timeout: 15_000 });
-      return label;
+      return;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const retriable =
@@ -104,26 +98,26 @@ async function submitChatDocumentUpload(page: Page): Promise<string | null> {
       await page.waitForTimeout(300);
     }
   }
-
-  return null;
 }
 
 async function uploadAllChatDocuments(page: Page) {
   const identityBtn = page.getByRole("button", { name: "Submit identity verification" });
-  const nextDocOrIdentity = page.getByRole("button", { name: UPLOAD_BUTTON }).or(identityBtn);
+  const uploadButtons = page.getByRole("button", { name: UPLOAD_BUTTON });
+  const nextDocOrIdentity = uploadButtons.or(identityBtn);
 
-  await expect(page.getByRole("button", { name: UPLOAD_BUTTON }).first()).toBeVisible({
-    timeout: 60_000,
-  });
+  await expect(uploadButtons.first()).toBeVisible({ timeout: 60_000 });
 
   for (let i = 0; i < 8; i++) {
     if (await identityBtn.isVisible().catch(() => false)) return;
 
-    const label = await submitChatDocumentUpload(page);
-    if (!label) {
+    const currentUpload = uploadButtons.first();
+    if (!(await currentUpload.isVisible().catch(() => false))) {
       await expect(identityBtn).toBeVisible({ timeout: 120_000 });
       return;
     }
+
+    const label = ((await currentUpload.textContent()) ?? "Upload document").trim();
+    await submitChatDocumentUpload(page, label);
 
     await expect(page.getByRole("button", { name: label, exact: true })).toBeHidden({
       timeout: 60_000,
