@@ -19,9 +19,17 @@ function formatFmcsaAddress(value: unknown): string | null {
   return null;
 }
 
+export type FraudAssessmentResult = FraudScoreResult & {
+  contactDiscrepancies: ReturnType<typeof scoreContactDiscrepancies>;
+  waived?: boolean;
+  waivedAt?: string;
+  waiverReason?: string | null;
+};
+
 export async function assessApplicationFraud(
   applicationId: string,
-): Promise<FraudScoreResult & { contactDiscrepancies: ReturnType<typeof scoreContactDiscrepancies> }> {
+  options?: { ignoreWaiver?: boolean },
+): Promise<FraudAssessmentResult> {
   const application = await db.onboardingApplication.findUnique({
     where: { id: applicationId },
     include: {
@@ -123,5 +131,18 @@ export async function assessApplicationFraud(
     tinMismatch: tinVerify?.available === true && tinVerify.match === false,
   });
 
-  return { ...fraud, contactDiscrepancies: contactDiscrepancy };
+  const waived =
+    !options?.ignoreWaiver && application.fraudWaiverAt != null;
+  if (!waived) {
+    return { ...fraud, contactDiscrepancies: contactDiscrepancy };
+  }
+
+  return {
+    ...fraud,
+    blockOnboarding: false,
+    waived: true,
+    waivedAt: application.fraudWaiverAt!.toISOString(),
+    waiverReason: application.fraudWaiverReason,
+    contactDiscrepancies: contactDiscrepancy,
+  };
 }

@@ -8,9 +8,11 @@ export type FraudSignal = {
   severity: "low" | "medium" | "high";
 };
 
+export type FraudLevel = "low" | "medium" | "high" | "critical";
+
 export type FraudScoreResult = {
   score: number;
-  level: "low" | "medium" | "high" | "critical";
+  level: FraudLevel;
   signals: FraudSignal[];
   blockOnboarding: boolean;
 };

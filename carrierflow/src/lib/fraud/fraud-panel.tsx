@@ -1,4 +1,4 @@
-import type { FraudScoreResult } from "./score";
+import type { FraudAssessmentResult } from "./assess";
 import type { ContactDiscrepancyResult } from "./contact-discrepancy";
 import { FraudWaiverForm } from "@/components/admin/fraud-waiver-form";
 
@@ -8,7 +8,7 @@ export function FraudPanel({
   applicationId,
   showWaiverForm = false,
 }: {
-  fraud: FraudScoreResult;
+  fraud: FraudAssessmentResult;
   contactDiscrepancies: ContactDiscrepancyResult;
   applicationId?: string;
   showWaiverForm?: boolean;
