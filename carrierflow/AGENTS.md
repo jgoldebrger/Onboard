@@ -27,6 +27,8 @@ Enterprise carrier onboarding SaaS (Fabuwood). Stack: Next.js App Router, Prisma
 3. Do not edit `schema.prisma` or `package.json` without parent approval.
 4. Phase 1: form-based rules builder; default prompts in code; document review uses SSE (EventSource) with poll fallback.
 5. Post-approval compliance (`src/lib/compliance/`) needs Inngest keys (`INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`) for daily crons; approve triggers an initial refresh synchronously.
+6. Approved carriers renew COI at `/onboarding/[applicationId]/compliance` (or `/onboarding/compliance` entry). COI upload triggers `MonitoredDocument` sync + compliance refresh after review.
+7. Fraud block waiver: admin `POST /api/admin/applications/[id]/fraud-waiver` (requires `applications:override`); audit log filter on `/audit` uses `fraudScore`/`fraudLevel` in log payloads.
 
 ## Commands
 

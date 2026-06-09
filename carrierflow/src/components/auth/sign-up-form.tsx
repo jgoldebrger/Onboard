@@ -79,7 +79,10 @@ export function SignUpForm({ inviteToken }: SignUpFormProps) {
       return;
     }
 
-    const data = (await res.json()) as { redirectTo?: string };
+    const data = (await res.json()) as {
+      redirectTo?: string;
+      emailVerificationRequired?: boolean;
+    };
 
     const signInResult = await signIn("credentials", {
       email,
@@ -93,7 +96,8 @@ export function SignUpForm({ inviteToken }: SignUpFormProps) {
       return;
     }
 
-    window.location.href = data.redirectTo ?? "/";
+    window.location.href =
+      data.redirectTo ?? (data.emailVerificationRequired ? "/verify-email" : "/");
   }
 
   return (

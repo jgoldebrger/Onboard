@@ -1,15 +1,16 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { UserRole } from "@prisma/client";
 import { authConfig } from "@/auth.config";
+import { validateCredentialsWithMfa } from "@/lib/auth/mfa";
 import { db } from "@/lib/db";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
+  totp: z.string().optional(),
 });
 
 const googleEnabled =
@@ -23,18 +24,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totp: { label: "Authenticator code", type: "text" },
       },
       async authorize(raw) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null;
+        const { email, password, totp } = parsed.data;
+        const result = await validateCredentialsWithMfa({
+          email,
+          password,
+          totp,
+        });
+        if (result.status !== "ok") return null;
 
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
+        const user = result.user;
         return {
           id: user.id,
           email: user.email,
@@ -65,8 +69,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: crypto.randomUUID(),
           email,
           role: "CARRIER",
+          emailVerifiedAt: new Date(),
         },
-        update: {},
+        update: { emailVerifiedAt: new Date() },
       });
       return true;
     },

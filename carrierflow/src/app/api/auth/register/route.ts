@@ -1,6 +1,10 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  createAndSendVerificationEmail,
+  shouldAutoVerifyEmail,
+} from "@/lib/auth/email-verification";
 import { db } from "@/lib/db";
 import { isDisposableEmail } from "@/lib/fraud/disposable-email";
 import { redeemInviteForUser } from "@/lib/invitations/redeem";
@@ -80,8 +84,13 @@ export async function POST(req: Request) {
       passwordHash,
       role: "CARRIER",
       companyName: parsed.data.companyName,
+      emailVerifiedAt: shouldAutoVerifyEmail() ? new Date() : undefined,
     },
   });
+
+  if (!shouldAutoVerifyEmail()) {
+    await createAndSendVerificationEmail(userId, email);
+  }
 
   let redirectTo: string | undefined;
   if (parsed.data.inviteToken) {
@@ -91,5 +100,9 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, redirectTo });
+  return NextResponse.json({
+    ok: true,
+    redirectTo: redirectTo ?? "/verify-email",
+    emailVerificationRequired: !shouldAutoVerifyEmail(),
+  });
 }

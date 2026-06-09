@@ -1,6 +1,7 @@
 import type { DocumentReviewStatus, Prisma } from "@prisma/client";
 import { runDocumentReviewAgent } from "@/lib/agents/document-review";
 import { syncMonitoredDocumentsFromApplication } from "@/lib/compliance/monitored-docs";
+import { refreshCarrierCompliance } from "@/lib/compliance/refresh";
 import { setDocumentReviewProgress } from "@/lib/documents/review-progress";
 import { db } from "@/lib/db";
 import { loadDocumentBytes } from "@/lib/ocr";
@@ -117,9 +118,11 @@ export async function processDocumentReview(documentId: string) {
     void syncMonitoredDocumentsFromApplication(
       profile.id,
       document.applicationId,
-    ).catch((err) =>
-      console.error("MonitoredDocument sync failed", documentId, err),
-    );
+    )
+      .then(() => refreshCarrierCompliance(document.applicationId))
+      .catch((err) =>
+        console.error("Compliance refresh after document review failed", documentId, err),
+      );
   }
 
   return {

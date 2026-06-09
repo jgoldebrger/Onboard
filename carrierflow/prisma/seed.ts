@@ -316,8 +316,13 @@ async function main() {
       email: "admin@carrierflow.local",
       passwordHash: adminHash,
       role: "ADMIN",
+      emailVerifiedAt: new Date(),
     },
-    update: { passwordHash: adminHash, role: "ADMIN" },
+    update: {
+      passwordHash: adminHash,
+      role: "ADMIN",
+      emailVerifiedAt: new Date(),
+    },
   });
 
   console.log("Seed complete");

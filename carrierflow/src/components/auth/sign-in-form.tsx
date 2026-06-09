@@ -34,24 +34,90 @@ function GoogleIcon() {
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [mfaStep, setMfaStep] = useState(false);
+  const [unverified, setUnverified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function resendVerification() {
+    setResendMessage(null);
+    const res = await fetch("/api/auth/resend-verification", { method: "POST" });
+    if (!res.ok) {
+      setResendMessage("Sign in first, then use resend from the verification page.");
+      return;
+    }
+    const data = (await res.json()) as { sent?: boolean };
+    setResendMessage(
+      data.sent
+        ? "Verification email sent."
+        : "Could not send email — check configuration or use the verification page after sign-in.",
+    );
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setResendMessage(null);
+    setUnverified(false);
+
+    if (!mfaStep) {
+      const pre = await fetch("/api/auth/pre-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (pre.status === 401) {
+        setLoading(false);
+        setError("Invalid email or password. Please try again.");
+        return;
+      }
+
+      if (pre.ok) {
+        const data = (await pre.json()) as { mfaRequired?: boolean };
+        if (data.mfaRequired) {
+          setMfaStep(true);
+          setLoading(false);
+          return;
+        }
+      }
+    }
 
     const result = await signIn("credentials", {
       email,
       password,
+      totp: mfaStep ? totp : undefined,
       redirect: false,
     });
 
     setLoading(false);
     if (result?.error) {
-      setError("Invalid email or password. Please try again.");
+      if (mfaStep) {
+        setError("Invalid authenticator code. Please try again.");
+      } else {
+        setError("Invalid email or password. Please try again.");
+      }
       return;
+    }
+
+    const sessionRes = await fetch("/api/auth/session");
+    const session = (await sessionRes.json()) as {
+      user?: { id?: string };
+    };
+
+    if (session.user?.id) {
+      const verifyRes = await fetch("/api/auth/email-status");
+      if (verifyRes.ok) {
+        const status = (await verifyRes.json()) as { verified?: boolean };
+        if (!status.verified) {
+          setUnverified(true);
+          window.location.href = "/verify-email";
+          return;
+        }
+      }
     }
 
     window.location.href = "/";
@@ -80,6 +146,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               className="h-11 bg-background"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              readOnly={mfaStep}
             />
           </div>
           <div className="space-y-2">
@@ -92,11 +159,46 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
               className="h-11 bg-background"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              readOnly={mfaStep}
             />
           </div>
+          {mfaStep ? (
+            <div className="space-y-2">
+              <Label htmlFor="totp">Authenticator code</Label>
+              <Input
+                id="totp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6-digit code"
+                className="h-11 bg-background"
+                value={totp}
+                onChange={(e) => setTotp(e.target.value)}
+                required
+              />
+            </div>
+          ) : null}
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {unverified ? (
+            <Alert>
+              <AlertDescription>
+                Your email is not verified yet.{" "}
+                <button
+                  type="button"
+                  className="font-medium underline underline-offset-4"
+                  onClick={resendVerification}
+                >
+                  Resend verification email
+                </button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {resendMessage ? (
+            <Alert>
+              <AlertDescription>{resendMessage}</AlertDescription>
             </Alert>
           ) : null}
           <Button
@@ -104,8 +206,22 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             className="h-11 w-full text-base shadow-sm"
             disabled={loading}
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Signing in…" : mfaStep ? "Verify and sign in" : "Sign in"}
           </Button>
+          {mfaStep ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setMfaStep(false);
+                setTotp("");
+                setError(null);
+              }}
+            >
+              Use a different account
+            </Button>
+          ) : null}
         </form>
 
         {googleEnabled ? (

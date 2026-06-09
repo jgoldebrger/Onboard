@@ -86,17 +86,34 @@ enum ComplianceAlertStatus {
 }
 
 model User {
-  id           String   @id
-  email        String   @unique
-  passwordHash String?
-  role         UserRole @default(CARRIER)
-  companyName  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id
+  email           String    @unique
+  passwordHash    String?
+  role            UserRole  @default(CARRIER)
+  companyName     String?
+  emailVerifiedAt DateTime?
+  mfaSecret       String?
+  mfaEnabled      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  applications OnboardingApplication[]
-  approvalLogs ApprovalLog[]
-  auditLogs    AuditLog[]
+  applications            OnboardingApplication[]
+  fraudWaiversGiven       OnboardingApplication[]  @relation("FraudWaivers")
+  approvalLogs            ApprovalLog[]
+  auditLogs               AuditLog[]
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PartnerType {
@@ -202,10 +219,16 @@ model OnboardingApplication {
   recommendation      String?
   ruleVersionSnapshot Json?
   submittedAt         DateTime?
+  fraudWaiverReason   String?
+  fraudWaiverAt       DateTime?
+  fraudWaiverById     String?
+  fraudWaiverScore    Int?
+  fraudWaiverLevel    String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
   user                 User                     @relation(fields: [userId], references: [id])
+  fraudWaiverBy        User?                    @relation("FraudWaivers", fields: [fraudWaiverById], references: [id])
   carrierType          CarrierType?             @relation(fields: [carrierTypeId], references: [id])
   answers              ApplicationAnswer[]
   documents            CarrierDocument[]

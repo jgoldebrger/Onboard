@@ -16,6 +16,7 @@ const navItems = [
   { href: "/ai-studio", label: "AI Studio" },
   { href: "/risk-rules", label: "Risk rules" },
   { href: "/audit", label: "Audit" },
+  { href: "/settings/security", label: "Security" },
 ];
 
 export function AdminNav() {

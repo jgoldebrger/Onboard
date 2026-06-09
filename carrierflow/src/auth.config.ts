@@ -14,6 +14,7 @@ export const authConfig = {
       const isPublic =
         path.startsWith("/sign-in") ||
         path.startsWith("/sign-up") ||
+        path.startsWith("/verify-email") ||
         path.startsWith("/api/auth") ||
         path.startsWith("/api/inngest") ||
         path === "/api/health";

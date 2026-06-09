@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
+import { isEmailVerified } from "@/lib/auth/email-verification";
+import { adminNeedsMfaEnrollment } from "@/lib/auth/mfa";
+import { getSessionUser } from "@/lib/auth";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,14 @@ export default async function HomePage() {
   const session = await auth();
   if (!session?.user) {
     redirect("/sign-in");
+  }
+
+  const user = await getSessionUser();
+  if (user && !isEmailVerified(user) && session.user.role === "CARRIER") {
+    redirect("/verify-email");
+  }
+  if (user && adminNeedsMfaEnrollment(user)) {
+    redirect("/settings/security?required=1");
   }
 
   const isAdmin = ADMIN_ROLES.has(session.user.role);

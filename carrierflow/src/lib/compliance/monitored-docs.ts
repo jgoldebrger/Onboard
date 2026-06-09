@@ -41,7 +41,10 @@ export async function syncMonitoredDocumentsFromApplication(
   applicationId: string,
 ) {
   const documents = await db.carrierDocument.findMany({
-    where: { applicationId },
+    where: {
+      applicationId,
+      review: { status: "PASSED" },
+    },
     include: {
       documentType: true,
       review: true,

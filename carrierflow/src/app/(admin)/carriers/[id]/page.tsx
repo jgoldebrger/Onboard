@@ -59,6 +59,9 @@ export default async function CarrierDetailPage({ params }: Params) {
   if (!application) notFound();
 
   const fraudAssessment = await assessApplicationFraud(application.id);
+  const rawFraudAssessment = application.fraudWaiverAt
+    ? await assessApplicationFraud(application.id, { ignoreWaiver: true })
+    : fraudAssessment;
 
   const latestGov = application.govVerifications[0];
   const rawResponse = latestGov?.rawResponse ?? null;
@@ -127,6 +130,10 @@ export default async function CarrierDetailPage({ params }: Params) {
       <FraudPanel
         fraud={fraudAssessment}
         contactDiscrepancies={fraudAssessment.contactDiscrepancies}
+        applicationId={application.id}
+        showWaiverForm={
+          rawFraudAssessment.blockOnboarding && !application.fraudWaiverAt
+        }
       />
 
       <CarrierFmcsaRefresh
