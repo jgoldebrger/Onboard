@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 
 const fixturePath = path.join(__dirname, "../fixtures/sample.png");
 
-/** Walk through unified onboarding chat: DOT → broker → questions → COI → identity. */
+/** Walk through unified onboarding chat: DOT → broker → questions → docs → identity. */
 export async function completeBrokerOnboardingChat(page: Page) {
   const chatInput = page.getByLabel("Message");
   const sendButton = page.getByRole("button", { name: "Send" });
@@ -21,18 +21,13 @@ export async function completeBrokerOnboardingChat(page: Page) {
   await chatInput.fill("broker");
   await sendButton.click();
 
-  for (const answer of ["E2E Transport LLC", "MC-123456"]) {
+  for (const answer of ["E2E Transport LLC", "MC-123456", "yes"]) {
     await expect(chatInput).toBeVisible({ timeout: 20_000 });
     await chatInput.fill(answer);
     await sendButton.click();
   }
 
-  const uploadCoi = page.getByRole("button", {
-    name: /Upload Certificate of Insurance/i,
-  });
-  await expect(uploadCoi).toBeVisible({ timeout: 30_000 });
-  await page.locator('input[name="file"]').setInputFiles(fixturePath);
-  await uploadCoi.click();
+  await uploadAllChatDocuments(page);
 
   await expect(
     page.getByRole("button", { name: "Submit identity verification" }),
@@ -48,6 +43,27 @@ export async function completeBrokerOnboardingChat(page: Page) {
   await expect(page.getByRole("button", { name: "Submit application" })).toBeEnabled({
     timeout: 15_000,
   });
+}
+
+async function uploadAllChatDocuments(page: Page) {
+  const uploadPattern = /^Upload /;
+
+  for (let i = 0; i < 6; i++) {
+    const uploadBtn = page.getByRole("button", { name: uploadPattern });
+    const visible = await uploadBtn
+      .first()
+      .isVisible({ timeout: i === 0 ? 60_000 : 5_000 })
+      .catch(() => false);
+    if (!visible) break;
+
+    const currentUpload = uploadBtn.first();
+    const label = (await currentUpload.textContent()) ?? `Upload document ${i + 1}`;
+    await page.locator('input[name="file"]').setInputFiles(fixturePath);
+    await currentUpload.click();
+    await expect(page.getByRole("button", { name: label, exact: true })).toBeHidden({
+      timeout: 60_000,
+    });
+  }
 }
 
 export async function submitApplication(page: Page) {

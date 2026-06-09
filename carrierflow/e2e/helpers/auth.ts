@@ -36,11 +36,30 @@ export async function signUp(
   if (companyName) {
     await page.getByLabel(/company name/i).fill(companyName);
   }
+  const registerResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes("/api/auth/register") &&
+      res.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Create account", exact: true }).click();
+  const regRes = await registerResponse;
+  if (!regRes.ok()) {
+    const body = (await regRes.json().catch(() => ({}))) as { error?: string };
+    throw new Error(
+      `Registration failed (${regRes.status()}): ${body.error ?? "unknown error"}`,
+    );
+  }
 
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-up"), {
-    timeout: 30_000,
-  });
+  const leftSignUp = await page
+    .waitForURL((url) => !url.pathname.startsWith("/sign-up"), {
+      timeout: 15_000,
+    })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!leftSignUp) {
+    await signIn(page, email, password);
+  }
 
   await leaveVerifyEmailIfNeeded(page);
 
