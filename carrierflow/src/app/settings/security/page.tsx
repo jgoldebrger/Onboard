@@ -56,8 +56,8 @@ export default async function SecuritySettingsPage({ searchParams }: PageProps) 
           <CardHeader>
             <CardTitle>Security</CardTitle>
             <CardDescription>
-              Protect admin access with a time-based one-time password (TOTP)
-              from your authenticator app.
+              Optionally protect your admin account with a time-based one-time
+              password (TOTP) from your authenticator app.
             </CardDescription>
           </CardHeader>
           <CardContent>

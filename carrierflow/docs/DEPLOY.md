@@ -53,6 +53,7 @@ After changing environment variables in the Vercel dashboard or CLI, redeploy pr
 - [ ] Set `AUTH_SECRET` (32+ char random) and `AUTH_URL` to production URL
 - [ ] Optional: `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` for Google sign-in
 - [ ] Promote admin users in DB: `UPDATE "User" SET role = 'ADMIN' WHERE email = '...'`
+- [ ] Optional: set `REQUIRE_ADMIN_MFA=true` to force TOTP enrollment before admin pages; default is off. Admins can opt in at `/settings/security`.
 
 ---
 

@@ -40,7 +40,6 @@ export default defineConfig({
       LOCAL_STORAGE_PATH: ".data/e2e-uploads",
       SEED_ADMIN_PASSWORD: process.env.SEED_ADMIN_PASSWORD ?? "changeme123",
       AUTO_VERIFY_EMAIL: "true",
-      REQUIRE_ADMIN_MFA: "false",
     },
   },
 });

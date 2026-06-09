@@ -9,7 +9,7 @@ export function isAdminRole(role: UserRole): boolean {
 }
 
 export function isAdminMfaRequired(): boolean {
-  return process.env.REQUIRE_ADMIN_MFA !== "false";
+  return process.env.REQUIRE_ADMIN_MFA === "true";
 }
 
 export function adminNeedsMfaEnrollment(
