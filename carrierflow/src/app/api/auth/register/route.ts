@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { isDisposableEmail } from "@/lib/fraud/disposable-email";
+import { redeemInviteForUser } from "@/lib/invitations/redeem";
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   companyName: z.string().optional(),
+  inviteToken: z.string().optional(),
 });
 
 const registrationAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -70,9 +72,10 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const userId = crypto.randomUUID();
   await db.user.create({
     data: {
-      id: crypto.randomUUID(),
+      id: userId,
       email,
       passwordHash,
       role: "CARRIER",
@@ -80,5 +83,13 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true });
+  let redirectTo: string | undefined;
+  if (parsed.data.inviteToken) {
+    const redeemed = await redeemInviteForUser(userId, parsed.data.inviteToken);
+    if (redeemed.ok) {
+      redirectTo = `/onboarding/${redeemed.applicationId}`;
+    }
+  }
+
+  return NextResponse.json({ ok: true, redirectTo });
 }
