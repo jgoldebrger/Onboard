@@ -24,7 +24,7 @@ Enterprise carrier onboarding SaaS (Fabuwood). Stack: Next.js App Router, Prisma
 1. Read `docs/contracts.md` before implementing APIs or domain types.
 2. No Supabase/Prisma from the browser — server routes only.
 3. Do not edit `schema.prisma` or `package.json` without parent approval.
-4. Phase 1: form-based rules builder; default prompts in code; poll not SSE.
+4. Phase 1: form-based rules builder; default prompts in code; document review uses SSE (EventSource) with poll fallback.
 
 ## Commands
 

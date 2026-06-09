@@ -1,5 +1,36 @@
 import type { ComplianceAlertType, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { complianceAlertEmail } from "@/lib/email";
+
+async function notifyComplianceAlertEmail(
+  carrierProfileId: string,
+  alert: { title: string; message: string | null },
+) {
+  const profile = await db.carrierProfile.findUnique({
+    where: { id: carrierProfileId },
+    include: {
+      application: {
+        select: {
+          user: { select: { email: true, companyName: true } },
+        },
+      },
+    },
+  });
+  if (!profile) return;
+
+  const carrierLabel =
+    profile.legalName ??
+    profile.application.user.companyName ??
+    profile.application.user.email;
+
+  await complianceAlertEmail({
+    carrierLabel,
+    dotNumber: profile.dotNumber,
+    alertTitle: alert.title,
+    alertMessage: alert.message ?? undefined,
+    qualificationStatus: profile.qualificationStatus,
+  });
+}
 
 export async function createComplianceAlert(params: {
   carrierProfileId: string;
@@ -19,7 +50,7 @@ export async function createComplianceAlert(params: {
   });
   if (existing) return existing;
 
-  return db.complianceAlert.create({
+  const alert = await db.complianceAlert.create({
     data: {
       carrierProfileId: params.carrierProfileId,
       type: params.type,
@@ -29,6 +60,12 @@ export async function createComplianceAlert(params: {
       metadata: params.metadata as Prisma.InputJsonValue | undefined,
     },
   });
+
+  void notifyComplianceAlertEmail(params.carrierProfileId, alert).catch(
+    (err) => console.error("Compliance alert email failed", alert.id, err),
+  );
+
+  return alert;
 }
 
 export async function acknowledgeAlert(

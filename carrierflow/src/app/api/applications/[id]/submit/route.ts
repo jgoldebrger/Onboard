@@ -3,6 +3,7 @@ import { assessApplicationRisk } from "@/lib/agents/risk";
 import { recommendApproval } from "@/lib/agents/approval";
 import { getSessionUser } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
+import { assessApplicationFraud } from "@/lib/fraud";
 import { notifyCarrierOfStatusChange } from "@/lib/notify-carrier";
 import { db } from "@/lib/db";
 import { loadPublishedRules } from "@/lib/rules";
@@ -23,6 +24,24 @@ export async function POST(_req: Request, { params }: Params) {
   }
   if (application.userId !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const fraud = await assessApplicationFraud(id);
+  if (fraud.blockOnboarding) {
+    return NextResponse.json(
+      {
+        error:
+          "Your application cannot be submitted due to fraud risk signals. Please contact support to resolve.",
+        fraudScore: fraud.score,
+        fraudLevel: fraud.level,
+        signals: fraud.signals.map((s) => ({
+          label: s.label,
+          severity: s.severity,
+          points: s.points,
+        })),
+      },
+      { status: 403 },
+    );
   }
 
   const published = await loadPublishedRules();

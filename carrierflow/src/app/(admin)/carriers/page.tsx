@@ -3,6 +3,7 @@ import { QualificationBadge } from "@/components/admin/compliance/qualification-
 import { db } from "@/lib/db";
 import { buildCarrierRow } from "@/lib/carriers/build-carrier-row";
 import { requireAdminPage } from "../_lib";
+import { CarrierInviteForm } from "../_components/carrier-invite-form";
 import { CarriersTable } from "../_components/tables/carriers-table";
 
 export default async function CarriersPage() {
@@ -97,6 +98,8 @@ export default async function CarriersPage() {
           );
         })}
       </div>
+
+      <CarrierInviteForm />
 
       <CarriersTable data={rows} carrierTypes={carrierTypes} />
     </div>

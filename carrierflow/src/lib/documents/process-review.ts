@@ -1,5 +1,6 @@
 import type { DocumentReviewStatus, Prisma } from "@prisma/client";
 import { runDocumentReviewAgent } from "@/lib/agents/document-review";
+import { syncMonitoredDocumentsFromApplication } from "@/lib/compliance/monitored-docs";
 import { setDocumentReviewProgress } from "@/lib/documents/review-progress";
 import { db } from "@/lib/db";
 import { loadDocumentBytes } from "@/lib/ocr";
@@ -107,6 +108,19 @@ export async function processDocumentReview(documentId: string) {
       reviewStep: "Review complete",
     },
   });
+
+  const profile = await db.carrierProfile.findUnique({
+    where: { applicationId: document.applicationId },
+    select: { id: true },
+  });
+  if (profile) {
+    void syncMonitoredDocumentsFromApplication(
+      profile.id,
+      document.applicationId,
+    ).catch((err) =>
+      console.error("MonitoredDocument sync failed", documentId, err),
+    );
+  }
 
   return {
     skipped: false as const,

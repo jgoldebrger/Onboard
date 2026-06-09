@@ -535,7 +535,8 @@ export function InterviewChat({
             disabled={
               submitting ||
               status === "PENDING_REVIEW" ||
-              phase !== "complete"
+              phase !== "complete" ||
+              blockReasons.length > 0
             }
             onClick={async () => {
               setSubmitting(true);
@@ -546,7 +547,15 @@ export function InterviewChat({
                   { method: "POST" },
                 );
                 const json = await res.json();
-                if (!res.ok) throw new Error(json.error ?? "Submit failed");
+                if (!res.ok) {
+                  const signalSummary =
+                    Array.isArray(json.signals) && json.signals.length > 0
+                      ? ` (${json.signals.map((s: { label: string }) => s.label).join("; ")})`
+                      : "";
+                  throw new Error(
+                    (json.error ?? "Submit failed") + signalSummary,
+                  );
+                }
                 setStatus(json.status ?? "PENDING_REVIEW");
                 appendAssistant(
                   `Application submitted successfully. Our team will review it shortly.${

@@ -22,11 +22,35 @@
 - [ ] Confirm build: `prisma generate && prisma migrate deploy && next build`
 - [ ] Set `NEXT_PUBLIC_APP_URL` to production URL
 
-## 4. Inngest
+## 4. Inngest (required for compliance crons)
 
-- [ ] Create app in Inngest Cloud
-- [ ] Point serve URL to `https://<domain>/api/inngest`
-- [ ] Set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` on Vercel
+Compliance jobs (FMCSA refresh, COI expiry, requalification) and document review
+queueing depend on Inngest. Without keys, `/api/inngest` is registered but **no
+cron runs**.
+
+1. Sign up at [Inngest Cloud](https://www.inngest.com/) and create an app (e.g. `carrierflow`).
+2. Set **Serve URL** to `https://<your-domain>/api/inngest` (production:
+   `https://onboard-one-woad.vercel.app/api/inngest`).
+3. Copy **Event Key** → `INNGEST_EVENT_KEY` and **Signing Key** →
+   `INNGEST_SIGNING_KEY` in Vercel (Production + Preview as needed).
+4. Redeploy after adding env vars. In Inngest dashboard, confirm functions sync
+   (`compliance-fmcsa-refresh`, `compliance-document-expiry`,
+   `compliance-requalify`, `document-process`).
+5. Local dev: run `npx inngest-cli@latest dev` alongside `npm run dev` and set
+   the same keys in `.env.local` (or use Inngest dev server defaults).
+
+Check Vercel env status (names only, no values):
+
+```bash
+cd carrierflow && npx vercel env ls
+```
+
+Look for `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`. If missing or empty,
+compliance monitoring stays UI-only until connected.
+
+**Status (2026-06-09):** `vercel env ls` for `joels-project/onboard` shows neither
+Inngest key configured on Production or Preview — connect Inngest Cloud and add
+both vars, then redeploy.
 
 ## 5. OpenAI / FMCSA / Email
 

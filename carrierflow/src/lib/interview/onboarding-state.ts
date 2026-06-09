@@ -1,6 +1,7 @@
 import { getInterviewMissingQuestions } from "@/lib/agents/interview";
 import { buildInterviewReply } from "@/lib/agents/interview-prompts";
 import { buildDotFirstPrompt } from "@/lib/fmcsa/cross-reference-message";
+import { assessApplicationFraud } from "@/lib/fraud";
 import { db } from "@/lib/db";
 import { resolveRequirements } from "@/lib/rules";
 
@@ -284,6 +285,21 @@ export async function getOnboardingProgress(
     nextPrompt = { kind: "complete", prompt: buildCompletePrompt() };
   }
 
+  let blocked = requirements.blocked;
+  let blockReasons = [...requirements.blockReasons];
+
+  if (phase === "complete" && !blocked) {
+    const fraud = await assessApplicationFraud(applicationId);
+    if (fraud.blockOnboarding) {
+      blocked = true;
+      blockReasons = [
+        ...blockReasons,
+        `Fraud risk score ${fraud.score} (${fraud.level}) — contact support before submitting`,
+        ...fraud.signals.map((s) => s.label),
+      ];
+    }
+  }
+
   return {
     phase,
     carrierTypeSlug,
@@ -297,8 +313,8 @@ export async function getOnboardingProgress(
     identityStatus: identity?.status ?? null,
     documentTypes,
     processingDocument,
-    blocked: requirements.blocked,
-    blockReasons: requirements.blockReasons,
+    blocked,
+    blockReasons,
   };
 }
 
