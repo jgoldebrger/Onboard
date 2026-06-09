@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { authenticator } from "otplib";
+import { generateSync } from "otplib";
 import {
   generateMfaEnrollment,
   isAdminRole,
@@ -10,7 +10,7 @@ import {
 describe("mfa", () => {
   it("generates a valid TOTP secret and verifies codes", () => {
     const { secret } = generateMfaEnrollment("admin@example.com");
-    const code = authenticator.generate(secret);
+    const code = generateSync({ secret });
     assert.equal(verifyTotpCode(secret, code), true);
   });
 

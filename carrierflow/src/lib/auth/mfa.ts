@@ -1,10 +1,13 @@
-import { authenticator } from "otplib";
+import {
+  generateSecret,
+  generateSync,
+  generateURI,
+  verifySync,
+} from "otplib";
 import type { User, UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 
 const ADMIN_ROLES = new Set<UserRole>(["ADMIN", "SUPER_ADMIN"]);
-
-authenticator.options = { window: 1 };
 
 export function isAdminRole(role: UserRole): boolean {
   return ADMIN_ROLES.has(role);
@@ -23,15 +26,23 @@ export function adminNeedsMfaEnrollment(
 export function generateMfaEnrollment(
   email: string,
 ): { secret: string; otpauthUrl: string } {
-  const secret = authenticator.generateSecret();
-  const otpauthUrl = authenticator.keyuri(email, "CarrierFlow", secret);
+  const secret = generateSecret();
+  const otpauthUrl = generateURI({
+    issuer: "CarrierFlow",
+    label: email,
+    secret,
+  });
   return { secret, otpauthUrl };
 }
 
 export function verifyTotpCode(secret: string, code: string): boolean {
   const normalized = code.replace(/\s/g, "");
   if (!/^\d{6}$/.test(normalized)) return false;
-  return authenticator.verify({ token: normalized, secret });
+  return verifySync({
+    secret,
+    token: normalized,
+    epochTolerance: 30,
+  }).valid;
 }
 
 export async function enrollMfaSecret(
